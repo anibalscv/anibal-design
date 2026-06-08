@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anibal Santa Cruz — Senior UX/UI & Product Designer | 3D Portfolio</title>
+    <meta name="description" content="Interactive 3D portfolio of Anibal Santa Cruz, a Senior UX/UI & Product Designer specializing in Design Systems, Fintech, and AI-driven education.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader-container">
+            <div class="loader-ring"></div>
+            <div class="loader-ring delay"></div>
+            <div class="loader-text">
+                <span class="loader-label">INITIALIZING SYSTEM</span>
+                <span class="loader-progress" id="load-progress">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- HUD Overlay -->
+    <div id="hud-overlay">
+        <div class="hud-corner top-left">
+            <span class="hud-text">SYS::PORTFOLIO_v3.1</span>
+            <span class="hud-text dim">ANIBAL.SANTACRUZ</span>
+        </div>
+        <div class="hud-corner top-right">
+            <span class="hud-text" id="hud-fps">60 FPS</span>
+            <span class="hud-text dim" id="hud-time"></span>
+        </div>
+        <div class="hud-corner bottom-left">
+            <span class="hud-text dim">DRAG TO ORBIT • CLICK TO EXPLORE</span>
+        </div>
+        <div class="hud-corner bottom-right">
+            <span class="hud-text dim">LAT: 19.4326° N</span>
+            <span class="hud-text dim">LNG: 99.1332° W</span>
+        </div>
+        <div id="audio-control" class="hud-button" role="button" tabindex="0">ENABLE AMBIENCE</div>
+        <!-- Crosshair -->
+        <div id="crosshair" class="hidden">
+            <svg width="40" height="40" viewBox="0 0 40 40">
+                <circle cx="20" cy="20" r="15" stroke="#00F0FF" stroke-width="1" fill="none" opacity="0.6"/>
+                <line x1="20" y1="2" x2="20" y2="10" stroke="#00F0FF" stroke-width="1" opacity="0.8"/>
+                <line x1="20" y1="30" x2="20" y2="38" stroke="#00F0FF" stroke-width="1" opacity="0.8"/>
+                <line x1="2" y1="20" x2="10" y2="20" stroke="#00F0FF" stroke-width="1" opacity="0.8"/>
+                <line x1="30" y1="20" x2="38" y2="20" stroke="#00F0FF" stroke-width="1" opacity="0.8"/>
+                <circle cx="20" cy="20" r="3" stroke="#00F0FF" stroke-width="1.5" fill="none"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Navigation Dots -->
+    <nav id="nav-dots">
+        <button class="nav-dot active" data-node="core" title="Profile Core">
+            <span class="dot-ring"></span>
+            <span class="dot-label">CORE</span>
+        </button>
+        <button class="nav-dot" data-node="intelica" title="Intelica">
+            <span class="dot-ring"></span>
+            <span class="dot-label">INTELICA</span>
+        </button>
+        <button class="nav-dot" data-node="education" title="Education">
+            <span class="dot-ring"></span>
+            <span class="dot-label">EDUCATION</span>
+        </button>
+        <button class="nav-dot" data-node="innovation" title="Experience">
+            <span class="dot-ring"></span>
+            <span class="dot-label">EXPERIENCE</span>
+        </button>
+    </nav>
+
+    <!-- Detail Panels -->
+    <!-- Panel: Core Profile -->
+    <div id="panel-core" class="detail-panel hidden">
+        <div class="panel-chrome">
+            <div class="panel-header">
+                <div class="panel-status-bar">
+                    <span class="status-dot green"></span>
+                    <span class="status-text">NODE::CORE_IDENTITY</span>
+                </div>
+                <button class="btn-back" id="btn-back-core">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5"/></svg>
+                    BACK TO ORBIT
+                </button>
+            </div>
+            <div class="panel-body">
+                <h1 class="panel-title glitch" data-text="Anibal Santa Cruz">Anibal Santa Cruz</h1>
+                <p class="panel-subtitle">Senior UX/UI & Product Designer</p>
+                <div class="panel-divider"></div>
+                <p class="panel-desc"><strong>UX/UI Expert, Master's in UX</strong> from UNIR, <strong>Artificial Intelligence</strong> Specialist at Coderhouse, currently training in <strong>AI Chatbot Design</strong> at USIL. Extensive experience collaborating with business, research, and development teams across major e-commerce platforms, consultancies, and industries, with <strong>more than 30 strategic projects</strong> under my charge. I focus on <strong>Interface Development, User-Centered Design, and Design Systems</strong>. Strong skills in visual design, motion, and prototyping.</p>
+
+                <!-- Skills Radar -->
+                <div class="skills-section">
+                    <h2 class="section-label">CORE COMPETENCIES</h2>
+                    <div class="skill-tags">
+                        <span class="skill-tag" style="--delay:0.1s">UX Design</span>
+                        <span class="skill-tag" style="--delay:0.2s">Research & Analysis</span>
+                        <span class="skill-tag" style="--delay:0.3s">Visual Design</span>
+                        <span class="skill-tag" style="--delay:0.4s">Product Design</span>
+                        <span class="skill-tag" style="--delay:0.5s">Prototyping</span>
+                        <span class="skill-tag" style="--delay:0.6s">DesignOps</span>
+                        <span class="skill-tag" style="--delay:0.7s">Design Systems</span>
+                        <span class="skill-tag" style="--delay:0.8s">AI Integration</span>
+                    </div>
+                    <!-- Radar Chart Canvas -->
+                    <canvas id="radar-chart" width="280" height="280"></canvas>
+                </div>
+
+                <!-- Actions -->
+                <div class="panel-actions">
+                    <a href="https://www.linkedin.com/in/anibalsantacruz" target="_blank" class="action-btn linkedin">
+                        <span class="btn-icon">in</span>
+                        <span>LinkedIn</span>
+                    </a>
+                    <a href="https://www.behance.net/anibalsantacruz" target="_blank" class="action-btn behance">
+                        <span class="btn-icon">Bē</span>
+                        <span>Behance</span>
+                    </a>
+                    <a href="mailto:anibal@santacruz.design" class="action-btn email">
+                        <span class="btn-icon">@</span>
+                        <span>Contact</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel: Intelica -->
+    <div id="panel-intelica" class="detail-panel hidden">
+        <div class="panel-chrome">
+            <div class="panel-header">
+                <div class="panel-status-bar">
+                    <span class="status-dot cyan"></span>
+                    <span class="status-text">NODE::INTELICA_FINTECH</span>
+                </div>
+                <button class="btn-back" id="btn-back-intelica">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5"/></svg>
+                    BACK TO ORBIT
+                </button>
+            </div>
+            <div class="panel-body">
+                <h1 class="panel-title">Intelica</h1>
+                <p class="panel-subtitle">Senior UX/UI Designer · 2021 — Present</p>
+                <div class="panel-divider"></div>
+                <p class="panel-desc">Built and scaled the <strong>'Incontrol Design System'</strong> from scratch using Atomic Design methodologies. Leading UX strategy across multiple fintech products, bridging complex financial data with intuitive interfaces.</p>
+
+                <!-- Metrics -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-value" data-target="26">0</span>
+                        <span class="metric-symbol">+</span>
+                        <span class="metric-label">Strategic Projects Managed</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-value" data-target="2">0</span>
+                        <span class="metric-symbol">×</span>
+                        <span class="metric-label">Monthly Active Users Growth</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-value" data-target="2">0</span>
+                        <span class="metric-symbol">×</span>
+                        <span class="metric-label">Conversions & Transactions</span>
+                    </div>
+                </div>
+
+                <!-- Sub-modules -->
+                <h2 class="section-label">KEY MODULES</h2>
+                <div class="module-list">
+                    <div class="module-item">
+                        <span class="module-icon">⬡</span>
+                        <div>
+                            <strong>Fee Library</strong>
+                            <p>Transactional fee matrix system powering complex financial rule engines across products.</p>
+                        </div>
+                    </div>
+                    <div class="module-item">
+                        <span class="module-icon">◈</span>
+                        <div>
+                            <strong>Data Quality</strong>
+                            <p>Automated data integrity monitoring and validation dashboards.</p>
+                        </div>
+                    </div>
+                    <div class="module-item">
+                        <span class="module-icon">◇</span>
+                        <div>
+                            <strong>Opt-Out</strong>
+                            <p>Self-service cancellation and retention flow optimization.</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Actions -->
+                <div class="panel-actions">
+                    <a href="https://www.behance.net/gallery/159204629/Incontrol-Design-System" target="_blank" rel="noopener" class="action-btn behance">
+                        <span>View Case of Study</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel: Education -->
+    <div id="panel-education" class="detail-panel hidden">
+        <div class="panel-chrome">
+            <div class="panel-header">
+                <div class="panel-status-bar">
+                    <span class="status-dot purple"></span>
+                    <span class="status-text">NODE::EDUCATION</span>
+                </div>
+                <button class="btn-back" id="btn-back-education">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5"/></svg>
+                    BACK TO ORBIT
+                </button>
+            </div>
+            <div class="panel-body">
+                <h1 class="panel-title">Education</h1>
+                <div class="panel-divider"></div>
+                <p class="panel-desc">Driven by a commitment to lifelong learning and technological evolution, my specialized education bridges foundational user-centered methodologies with the future of digital products. As detailed in image_a2fd6e.png, my training spans from strategic frameworks like Lean UX, digital advertising, and Design Thinking to cutting-edge specializations in AI product development and conversational chatbot design, ensuring every solution I build is both highly innovative and deeply intuitive.</p>
+
+                <!-- Technical Pillars -->
+                <h2 class="section-label">TECHNICAL PILLARS</h2>
+                <div class="pillar-grid">
+                    <div class="pillar-card">
+                        <div class="pillar-icon">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <circle cx="16" cy="16" r="12" stroke="#9D00FF" stroke-width="1"/>
+                                <circle cx="16" cy="16" r="6" stroke="#9D00FF" stroke-width="1"/>
+                                <circle cx="16" cy="16" r="2" fill="#9D00FF"/>
+                                <line x1="16" y1="4" x2="16" y2="1" stroke="#9D00FF" stroke-width="1"/>
+                                <line x1="16" y1="31" x2="16" y2="28" stroke="#9D00FF" stroke-width="1"/>
+                                <line x1="4" y1="16" x2="1" y2="16" stroke="#9D00FF" stroke-width="1"/>
+                                <line x1="31" y1="16" x2="28" y2="16" stroke="#9D00FF" stroke-width="1"/>
+                            </svg>
+                        </div>
+                        <strong>Product Design</strong>
+                        <p>Merging advanced product design with AI capabilities to pioneer innovative digital experiences and future-focused design education.</p>
+                    </div>
+                    <div class="pillar-card">
+                        <div class="pillar-icon">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <rect x="4" y="8" width="24" height="16" rx="2" stroke="#9D00FF" stroke-width="1"/>
+                                <line x1="8" y1="14" x2="18" y2="14" stroke="#9D00FF" stroke-width="1"/>
+                                <line x1="8" y1="18" x2="14" y2="18" stroke="#9D00FF" stroke-width="1"/>
+                                <circle cx="23" cy="16" r="2" stroke="#9D00FF" stroke-width="1"/>
+                            </svg>
+                        </div>
+                        <strong>Prompt Engineering</strong>
+                        <p>Zero-shot, Few-shot, and Chain-of-thought prompting techniques for design workflows.</p>
+                    </div>
+                    <div class="pillar-card">
+                        <div class="pillar-icon">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <path d="M6 24L6 12L16 6L26 12L26 24L16 28Z" stroke="#9D00FF" stroke-width="1" fill="none"/>
+                                <circle cx="16" cy="17" r="4" stroke="#9D00FF" stroke-width="1"/>
+                                <line x1="16" y1="13" x2="16" y2="6" stroke="#9D00FF" stroke-width="0.5" stroke-dasharray="2 2"/>
+                            </svg>
+                        </div>
+                        <strong>Chatbot Design</strong>
+                        <p>Conversational interface patterns, personality design, and human-AI interaction flows.</p>
+                    </div>
+                </div>
+
+                <!-- Education Credentials -->
+                <h2 class="section-label">EDUCATION & CERTIFICATIONS</h2>
+                <div class="pillar-grid">
+                    <div class="pillar-card">
+                        <div class="pillar-icon">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <circle cx="16" cy="16" r="12" stroke="#9D00FF" stroke-width="1"/>
+                                <path d="M10 20 L22 20" stroke="#9D00FF" stroke-width="1"/>
+                                <path d="M10 16 L22 16" stroke="#9D00FF" stroke-width="1"/>
+                                <path d="M10 12 L22 12" stroke="#9D00FF" stroke-width="1"/>
+                            </svg>
+                        </div>
+                        <strong>Programa especializado en diseño de aplicaciones y chatbots con IA</strong>
+                        <p>USIL · Actualidad</p>
+                    </div>
+                    <div class="pillar-card">
+                        <div class="pillar-icon">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <rect x="6" y="8" width="20" height="16" rx="3" stroke="#9D00FF" stroke-width="1"/>
+                                <path d="M10 12 L22 12" stroke="#9D00FF" stroke-width="1"/>
+                                <path d="M10 18 L22 18" stroke="#9D00FF" stroke-width="1"/>
+                            </svg>
+                        </div>
+                        <strong>Creación de Productos desde Cero con IA</strong>
+                        <p>Coderhouse · Marzo 2026</p>
+                    </div>
+                    <div class="pillar-card">
+                        <div class="pillar-icon">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <polygon points="16,6 26,16 16,26 6,16" stroke="#9D00FF" stroke-width="1" fill="none"/>
+                                <circle cx="16" cy="16" r="3" fill="#9D00FF"/>
+                            </svg>
+                        </div>
+                        <strong>Lean UX</strong>
+                        <p>UTEC · Abril 2022</p>
+                    </div>
+                    <div class="pillar-card">
+                        <div class="pillar-icon">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <path d="M8 24 L16 8 L24 24" stroke="#9D00FF" stroke-width="1" fill="none"/>
+                                <path d="M10 18 L22 18" stroke="#9D00FF" stroke-width="1"/>
+                            </svg>
+                        </div>
+                        <strong>Innovación y emprendimiento con Design Thinking</strong>
+                        <p>CENTRUM · Abril 2021</p>
+                    </div>
+                    <div class="pillar-card">
+                        <div class="pillar-icon">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <circle cx="16" cy="12" r="4" stroke="#9D00FF" stroke-width="1"/>
+                                <path d="M8 24 C12 18 20 18 24 24" stroke="#9D00FF" stroke-width="1" fill="none"/>
+                            </svg>
+                        </div>
+                        <strong>Diplomado en Publicidad Digital</strong>
+                        <p>Toulouse Lautrec · Enero 2020</p>
+                    </div>
+                    <div class="pillar-card">
+                        <div class="pillar-icon">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <rect x="6" y="12" width="20" height="10" rx="2" stroke="#9D00FF" stroke-width="1"/>
+                                <line x1="10" y1="16" x2="22" y2="16" stroke="#9D00FF" stroke-width="1"/>
+                                <line x1="10" y1="20" x2="20" y2="20" stroke="#9D00FF" stroke-width="1"/>
+                            </svg>
+                        </div>
+                        <strong>Master en Usabilidad y Experiencia de Usuario</strong>
+                        <p>Universidad de La Rioja (UNIR) · Noviembre 2023</p>
+                    </div>
+                    <div class="pillar-card">
+                        <div class="pillar-icon">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <path d="M8 8 H24 V24 H8 Z" stroke="#9D00FF" stroke-width="1" fill="none"/>
+                                <line x1="8" y1="14" x2="24" y2="14" stroke="#9D00FF" stroke-width="1"/>
+                                <line x1="8" y1="20" x2="24" y2="20" stroke="#9D00FF" stroke-width="1"/>
+                            </svg>
+                        </div>
+                        <strong>Estudio internacional empresarial en e-commerce & marketing digital</strong>
+                        <p>CENTRUM · Diciembre 2021</p>
+                    </div>
+                    <div class="pillar-card">
+                        <div class="pillar-icon">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <path d="M8 24 L16 8 L24 24" stroke="#9D00FF" stroke-width="1" fill="none"/>
+                                <path d="M12 18 L20 18" stroke="#9D00FF" stroke-width="1"/>
+                            </svg>
+                        </div>
+                        <strong>Bachiller en Dirección de Artes Gráficas y Publicitarias</strong>
+                        <p>Universidad Peruana de Arte Orval · Diciembre 2015</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel: Innovation -->
+    <div id="panel-innovation" class="detail-panel hidden">
+        <div class="panel-chrome">
+            <div class="panel-header">
+                <div class="panel-status-bar">
+                    <span class="status-dot gold"></span>
+                    <span class="status-text">NODE::INNOVATION_PRODUCTS</span>
+                </div>
+                <button class="btn-back" id="btn-back-innovation">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5"/></svg>
+                    BACK TO ORBIT
+                </button>
+            </div>
+            <div class="panel-body">
+                <h1 class="panel-title">Innovation Lab</h1>
+                <p class="panel-subtitle">Personal Products & Creative Projects</p>
+                <div class="panel-divider"></div>
+
+                <!-- Section A -->
+                <div class="innovation-section">
+                    <div class="section-badge">A</div>
+                    <h2 class="section-title">G&G Joyeros</h2>
+                    <p class="section-role">Representaciones YAGO · UX/UI Analyst</p>
+                    <p class="panel-desc">Redesign of core e-commerce platforms (<strong>gygjoyeros.com</strong>, <strong>gyghome.com</strong>) and Swatch Group style guides. Led a pioneering <strong>3-month Augmented Reality (AR) campaign</strong> to revolutionize the luxury jewelry shopping experience.</p>
+                </div>
+
+                <div class="section-separator"></div>
+
+                <!-- Section B -->
+                <div class="innovation-section">
+                    <div class="section-badge">B</div>
+                    <h2 class="section-title">Tax Flow — MVP</h2>
+                    <p class="section-role">Product Design · Fintech Application</p>
+                    <p class="panel-desc">A fintech application built with <strong>Supabase</strong> and <strong>Resend</strong>, designed to simplify tax processes for independent professionals. Full product design from concept to delivery, including user research, information architecture, and UI design.</p>
+                    <div class="tech-stack">
+                        <span class="tech-tag">Supabase</span>
+                        <span class="tech-tag">Resend</span>
+                        <span class="tech-tag">React</span>
+                        <span class="tech-tag">Product Design</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="scene.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "anibal-design-3d-portfolio",
+  "version": "1.0.0",
+  "description": "Local server for Anibal Santa Cruz 3D portfolio.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "serve": "node server.js"
+  },
+  "author": "Anibal Santa Cruz",
+  "license": "MIT"
+}
