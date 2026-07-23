@@ -4,7 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anibal Santa Cruz — Senior UX/UI & Product Designer | 3D Portfolio</title>
-    <meta name="description" content="Interactive 3D portfolio of Anibal Santa Cruz, a Senior UX/UI & Product Designer specializing in Design Systems, Fintech, and AI-driven education.">
+    <meta name="theme-color" content="#0A0F1D">
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Anibal Santa Cruz — Senior UX/UI & Product Designer | 3D Portfolio">
+    <meta property="og:description" content="Interactive 3D portfolio of Anibal Santa Cruz, a Senior UX/UI & Product Designer specializing in Design Systems, Fintech, and AI-driven education.">
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Anibal Santa Cruz — Senior UX/UI & Product Designer">
+    <meta name="twitter:description" content="Interactive 3D portfolio of Anibal Santa Cruz. Design Systems, Fintech & AI Integration.">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230A0F1D' stroke='%2300F0FF' stroke-width='6'/><circle cx='50' cy='50' r='20' fill='%2300F0FF'/></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -13,12 +23,17 @@
 <body>
     <!-- Loading Screen -->
     <div id="loading-screen">
-        <div class="loader-container">
-            <div class="loader-ring"></div>
-            <div class="loader-ring delay"></div>
-            <div class="loader-text">
-                <span class="loader-label">INITIALIZING SYSTEM</span>
-                <span class="loader-progress" id="load-progress">0%</span>
+        <div class="loading-panel">
+            <div class="loading-copy">
+                <span class="loading-subtitle">Welcome to</span>
+                <span class="loading-title">my cosmic portafolio</span>
+                <span class="loading-author">design by Anibal Santa Cruz</span>
+            </div>
+            <div class="loading-bar-wrap">
+                <div class="loading-bar-track">
+                    <div class="loading-bar-fill" id="loading-bar-fill"></div>
+                </div>
+                <span class="loading-percent" id="load-progress">0%</span>
             </div>
         </div>
     </div>
@@ -26,19 +41,13 @@
     <!-- HUD Overlay -->
     <div id="hud-overlay">
         <div class="hud-corner top-left">
-            <span class="hud-text">SYS::PORTFOLIO_v3.1</span>
-            <span class="hud-text dim">ANIBAL.SANTACRUZ</span>
+            <span class="hud-text">Anibal Santa Cruz Portafolio</span>
         </div>
         <div class="hud-corner top-right">
-            <span class="hud-text" id="hud-fps">60 FPS</span>
             <span class="hud-text dim" id="hud-time"></span>
         </div>
         <div class="hud-corner bottom-left">
             <span class="hud-text dim">DRAG TO ORBIT • CLICK TO EXPLORE</span>
-        </div>
-        <div class="hud-corner bottom-right">
-            <span class="hud-text dim">LAT: 19.4326° N</span>
-            <span class="hud-text dim">LNG: 99.1332° W</span>
         </div>
         <div id="audio-control" class="hud-button" role="button" tabindex="0">ENABLE AMBIENCE</div>
         <!-- Crosshair -->
@@ -52,6 +61,7 @@
                 <circle cx="20" cy="20" r="3" stroke="#00F0FF" stroke-width="1.5" fill="none"/>
             </svg>
         </div>
+
     </div>
 
     <!-- Navigation Dots -->
@@ -80,8 +90,8 @@
         <div class="panel-chrome">
             <div class="panel-header">
                 <div class="panel-status-bar">
-                    <span class="status-dot green"></span>
-                    <span class="status-text">NODE::CORE_IDENTITY</span>
+                    <span class="status-dot cyan"></span>
+                    <span class="status-text"></span>
                 </div>
                 <button class="btn-back" id="btn-back-core">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -135,8 +145,8 @@
         <div class="panel-chrome">
             <div class="panel-header">
                 <div class="panel-status-bar">
-                    <span class="status-dot cyan"></span>
-                    <span class="status-text">NODE::INTELICA_FINTECH</span>
+                    <span class="status-dot orange"></span>
+                    <span class="status-text"></span>
                 </div>
                 <button class="btn-back" id="btn-back-intelica">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -168,36 +178,36 @@
                     </div>
                 </div>
 
+                <!-- Actions -->
+                <div class="panel-actions">
+                    <a href="https://www.behance.net/gallery/159204629/Incontrol-Design-System" target="_blank" rel="noopener" class="action-btn behance">
+                        <span>View Case of Study</span>
+                    </a>
+                </div>
+
                 <!-- Sub-modules -->
                 <h2 class="section-label">KEY MODULES</h2>
                 <div class="module-list">
                     <div class="module-item">
                         <span class="module-icon">⬡</span>
                         <div>
-                            <strong>Fee Library</strong>
-                            <p>Transactional fee matrix system powering complex financial rule engines across products.</p>
+                            <strong>TPE Dashboards</strong>
+                            <p>Centralizes and visualizes third-party expenses associated with the payments ecosystem, enabling teams to monitor, understand, and optimize costs through metrics, trends, breakdowns, and detailed views.</p>
+                            <a href="https://www.behance.net/gallery/251875307/Intelica-TPE-Dashboards" target="_blank" rel="noopener" class="action-btn behance" style="margin-top: 10px; width: fit-content;">
+                                <span>View Project</span>
+                            </a>
                         </div>
                     </div>
                     <div class="module-item">
                         <span class="module-icon">◈</span>
                         <div>
-                            <strong>Data Quality</strong>
-                            <p>Automated data integrity monitoring and validation dashboards.</p>
+                            <strong>Fee Library</strong>
+                            <p>Centralizes all fees into a single view, making them easier to analyze. It allows users to explore current and historical fees and segment them using various criteria.</p>
+                            <a href="https://www.behance.net/gallery/251932953/Intelica-Fee-Library" target="_blank" rel="noopener" class="action-btn behance" style="margin-top: 10px; width: fit-content;">
+                                <span>View Project</span>
+                            </a>
                         </div>
                     </div>
-                    <div class="module-item">
-                        <span class="module-icon">◇</span>
-                        <div>
-                            <strong>Opt-Out</strong>
-                            <p>Self-service cancellation and retention flow optimization.</p>
-                        </div>
-                    </div>
-                </div>
-                <!-- Actions -->
-                <div class="panel-actions">
-                    <a href="https://www.behance.net/gallery/159204629/Incontrol-Design-System" target="_blank" rel="noopener" class="action-btn behance">
-                        <span>View Case of Study</span>
-                    </a>
                 </div>
             </div>
         </div>
@@ -209,7 +219,7 @@
             <div class="panel-header">
                 <div class="panel-status-bar">
                     <span class="status-dot purple"></span>
-                    <span class="status-text">NODE::EDUCATION</span>
+                    <span class="status-text"></span>
                 </div>
                 <button class="btn-back" id="btn-back-education">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -363,7 +373,7 @@
             <div class="panel-header">
                 <div class="panel-status-bar">
                     <span class="status-dot gold"></span>
-                    <span class="status-text">NODE::INNOVATION_PRODUCTS</span>
+                    <span class="status-text"></span>
                 </div>
                 <button class="btn-back" id="btn-back-innovation">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -371,16 +381,16 @@
                 </button>
             </div>
             <div class="panel-body">
-                <h1 class="panel-title">Innovation Lab</h1>
-                <p class="panel-subtitle">Personal Products & Creative Projects</p>
+                <h1 class="panel-title">Experience</h1>
+                <p class="panel-subtitle"><strong>Personal Products</strong> & Creative Projects</p>
                 <div class="panel-divider"></div>
 
                 <!-- Section A -->
                 <div class="innovation-section">
                     <div class="section-badge">A</div>
-                    <h2 class="section-title">G&G Joyeros</h2>
-                    <p class="section-role">Representaciones YAGO · UX/UI Analyst</p>
-                    <p class="panel-desc">Redesign of core e-commerce platforms (<strong>gygjoyeros.com</strong>, <strong>gyghome.com</strong>) and Swatch Group style guides. Led a pioneering <strong>3-month Augmented Reality (AR) campaign</strong> to revolutionize the luxury jewelry shopping experience.</p>
+                    <h2 class="section-title">Intelica</h2>
+                    <p class="section-role"><strong>Senior UX/UI Designer · Mar 2021 – Present</strong></p>
+                    <p class="panel-desc"><strong>UX/UI Lead with 5+ years of experience</strong> directing cross-functional teams and stakeholders in the financial sector. <strong>Designed and implemented a scalable, efficient design system</strong> from scratch, optimized through continuous user research, prototyping, and visual audits. <strong>Successfully led over 26 strategic projects,</strong> doubling the company’s monthly active users, registrations, conversions, and transactions.</p>
                 </div>
 
                 <div class="section-separator"></div>
@@ -388,15 +398,19 @@
                 <!-- Section B -->
                 <div class="innovation-section">
                     <div class="section-badge">B</div>
-                    <h2 class="section-title">Tax Flow — MVP</h2>
-                    <p class="section-role">Product Design · Fintech Application</p>
-                    <p class="panel-desc">A fintech application built with <strong>Supabase</strong> and <strong>Resend</strong>, designed to simplify tax processes for independent professionals. Full product design from concept to delivery, including user research, information architecture, and UI design.</p>
-                    <div class="tech-stack">
-                        <span class="tech-tag">Supabase</span>
-                        <span class="tech-tag">Resend</span>
-                        <span class="tech-tag">React</span>
-                        <span class="tech-tag">Product Design</span>
-                    </div>
+                    <h2 class="section-title">MALI</h2>
+                    <p class="section-role"><strong>UX/UI design teacher · Abr 2015 – Present</strong></p>
+                    <p class="panel-desc"><strong>UX/UI Instructor and Mentor</strong> experienced in designing and teaching comprehensive courses covering user research, information architecture, and interface design. <strong>Developed modern academic curricula</strong> focused on current design trends, accessibility, and usability. <strong>Guided students through the entire digital product lifecycle</strong>, providing hands-on mentorship from initial concept to prototyping and user testing.</p>
+                </div>
+
+                <div class="section-separator"></div>
+
+                <!-- Section C -->
+                <div class="innovation-section">
+                    <div class="section-badge">C</div>
+                    <h2 class="section-title">Representaciones YAGO (G&G Joyeros)</h2>
+                    <p class="section-role"><strong>Marketing Analyst / UX/UI Designer · Jul 2020 – Mar 2021</strong></p>
+                    <p class="panel-desc"><strong>UX/Product Designer responsible for the end-to-end experience</strong> and core features of key e-commerce websites, including gygjoyeros.com and gyghome.com. <strong>Managed style guides and executed visual design strategies</strong> for several SWATCH Group brands while driving enterprise platform redesigns. Collaborated closely with sales, marketing, and leadership to validate and implement high-impact product features.</p>
                 </div>
             </div>
         </div>

@@ -15,6 +15,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 const COLORS = {
     bg: 0x0A0F1D,
     cyan: 0x00F0FF,
+    orange: 0xFF5F16,
     purple: 0xB486FF,
     silver: 0xC0D0E0,
     gold: 0xFFD700,
@@ -25,13 +26,18 @@ const isMobile = /Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent) || wi
 
 const NODE_CONFIG = {
     core: { position: new THREE.Vector3(0, 0, 0), color: COLORS.cyan, panelId: 'panel-core' },
-    intelica: { position: new THREE.Vector3(5, 1.5, 2), color: COLORS.cyan, panelId: 'panel-intelica' },
+    intelica: { position: new THREE.Vector3(5, 1.5, 2), color: COLORS.orange, panelId: 'panel-intelica' },
     education: { position: new THREE.Vector3(-4, 2, -4), color: COLORS.purple, panelId: 'panel-education' },
     innovation: { position: new THREE.Vector3(3, -2, -5), color: COLORS.gold, panelId: 'panel-innovation' },
 };
 
 const ORBIT_RADII = { intelica: 6, education: 7, innovation: 8 };
 const ORBIT_SPEEDS = { intelica: 0.08, education: 0.06, innovation: 0.05 };
+const ORBIT_HIGHLIGHT = {
+    default: 0.42,
+    hover: 0.68,
+    active: 0.92,
+};
 
 // ============================================
 // STATE
@@ -49,10 +55,13 @@ const state = {
     cameraPosition: new THREE.Vector3(0, 2, 16),
     defaultCamPos: new THREE.Vector3(0, 2, 16),
     defaultCamTarget: new THREE.Vector3(0, 0, 0),
+    cameraDistance: 16,
     orbitAngle: 0,
     autoOrbit: true,
     isDragging: false,
     dragStart: new THREE.Vector2(),
+    dragDistance: 0,
+    dragVelocity: new THREE.Vector2(),
     sphericalDelta: { theta: 0, phi: 0 },
     spherical: { theta: 0, phi: Math.PI / 2.3 },
     damping: { theta: 0, phi: 0 },
@@ -91,6 +100,7 @@ function saveAudioPreference() {
 // INIT SCENE
 // ============================================
 const container = document.getElementById('canvas-container');
+const crosshairEl = document.getElementById('crosshair');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(COLORS.bg);
 scene.fog = new THREE.FogExp2(COLORS.bg, 0.018);
@@ -184,7 +194,7 @@ scene.add(pointLight3);
 // BACKGROUND PARTICLES
 // ============================================
 function createParticleField() {
-    const count = isMobile ? 1200 : 2000;
+    const count = isMobile ? 800 : 2000;
     const positions = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const colors = new Float32Array(count * 3);
@@ -315,25 +325,29 @@ scene.add(grid);
 // ============================================
 // ORBIT RINGS (visual orbit paths)
 // ============================================
-function createOrbitRing(radius, color, tiltX = 0, tiltZ = 0) {
+const orbitRings = {};
+
+function createOrbitRing(key, radius, color, tiltX = 0, tiltZ = 0) {
     const curve = new THREE.EllipseCurve(0, 0, radius, radius, 0, Math.PI * 2, false, 0);
     const points = curve.getPoints(128);
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     const material = new THREE.LineBasicMaterial({
         color,
         transparent: true,
-        opacity: 0.08,
+        opacity: ORBIT_HIGHLIGHT.default,
         blending: THREE.AdditiveBlending,
+        depthWrite: false,
     });
     const ring = new THREE.Line(geometry, material);
     ring.rotation.x = Math.PI / 2 + tiltX;
     ring.rotation.z = tiltZ;
+    orbitRings[key] = ring;
     return ring;
 }
 
-scene.add(createOrbitRing(ORBIT_RADII.intelica, COLORS.cyan, 0.3, 0.1));
-scene.add(createOrbitRing(ORBIT_RADII.education, COLORS.purple, -0.2, -0.15));
-scene.add(createOrbitRing(ORBIT_RADII.innovation, COLORS.gold, 0.15, 0.2));
+scene.add(createOrbitRing('intelica', ORBIT_RADII.intelica, COLORS.orange, 0.3, 0.1));
+scene.add(createOrbitRing('education', ORBIT_RADII.education, COLORS.purple, -0.2, -0.15));
+scene.add(createOrbitRing('innovation', ORBIT_RADII.innovation, COLORS.gold, 0.15, 0.2));
 
 // ============================================
 // CONNECTION LINES between nodes
@@ -341,7 +355,7 @@ scene.add(createOrbitRing(ORBIT_RADII.innovation, COLORS.gold, 0.15, 0.2));
 const connectionLines = [];
 function createConnectionLine(fromKey, toKey) {
     const material = new THREE.LineBasicMaterial({
-        color: COLORS.cyan,
+        color: COLORS.orange,
         transparent: true,
         opacity: 0.06,
         blending: THREE.AdditiveBlending,
@@ -388,6 +402,22 @@ function createGlowSprite(color, scale = 4) {
     const sprite = new THREE.Sprite(spriteMat);
     sprite.scale.set(scale, scale, 1);
     return sprite;
+}
+
+function boostNodeGlow(group, color, intensity) {
+    group.traverse((obj) => {
+        if (!obj.isMesh || !obj.material) return;
+        const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+        materials.forEach((material) => {
+            if (material.isMeshStandardMaterial) {
+                material.emissive = new THREE.Color(color);
+                material.emissiveIntensity = intensity;
+            }
+            if (material.isMeshBasicMaterial && material.color) {
+                material.opacity = Math.min(1, material.opacity + 0.05);
+            }
+        });
+    });
 }
 
 // --- Node 1: Central Core (Geodesic Sphere) ---
@@ -447,6 +477,32 @@ function createCoreNode() {
     // Glow
     group.add(createGlowSprite(COLORS.cyan, 5));
 
+    const orbitRing1 = new THREE.Mesh(
+        new THREE.TorusGeometry(1.7, 0.008, 8, 64),
+        new THREE.MeshBasicMaterial({
+            color: COLORS.cyan,
+            transparent: true,
+            opacity: 0.24,
+            depthWrite: false,
+        })
+    );
+    orbitRing1.rotation.x = Math.PI / 2;
+    group.add(orbitRing1);
+
+    const orbitRing2 = new THREE.Mesh(
+        new THREE.TorusGeometry(2.2, 0.006, 8, 64),
+        new THREE.MeshBasicMaterial({
+            color: COLORS.cyan,
+            transparent: true,
+            opacity: 0.16,
+            depthWrite: false,
+        })
+    );
+    orbitRing2.rotation.y = Math.PI / 2;
+    group.add(orbitRing2);
+
+    boostNodeGlow(group, COLORS.cyan, 1.25);
+
     // Label
     const label = createLabel('CORE OVERVIEW', COLORS.cyan);
     label.position.y = 2;
@@ -465,70 +521,197 @@ function createCoreNode() {
     return group;
 }
 
-// --- Node 2: Intelica (Atomic Cube) ---
+// --- Node 2: Intelica ---
 function createIntelicaNode() {
     const group = new THREE.Group();
     group.userData = { key: 'intelica', baseScale: 1 };
 
-    // Build cube from small blocks
-    const blockGeo = new THREE.BoxGeometry(0.15, 0.15, 0.15);
-    const blockMat = new THREE.MeshStandardMaterial({
-        color: COLORS.cyan,
-        emissive: COLORS.cyan,
-        emissiveIntensity: 0.2,
+    // ── Core globe — softer warm burnt-orange ──
+    const planetMat = new THREE.MeshStandardMaterial({
+        color: 0xA84820,
+        emissive: 0x4A1A06,
+        emissiveIntensity: 0.25,
+        metalness: 0.70,
+        roughness: 0.42,
         transparent: true,
-        opacity: 0.6,
-        roughness: 0.3,
-        metalness: 0.9,
+        opacity: 0.97,
     });
+    const planet = new THREE.Mesh(new THREE.SphereGeometry(1.05, isMobile ? 32 : 64, isMobile ? 32 : 64), planetMat);
+    group.add(planet);
 
-    const cubeGroup = new THREE.Group();
-    const gridSize = 5;
-    const spacing = 0.22;
-    const offset = (gridSize - 1) * spacing / 2;
-
-    for (let x = 0; x < gridSize; x++) {
-        for (let y = 0; y < gridSize; y++) {
-            for (let z = 0; z < gridSize; z++) {
-                // Only edges and sparse interior
-                const isEdge = (x === 0 || x === gridSize - 1) +
-                    (y === 0 || y === gridSize - 1) +
-                    (z === 0 || z === gridSize - 1) >= 2;
-                if (isEdge || Math.random() < 0.08) {
-                    const block = new THREE.Mesh(blockGeo, blockMat.clone());
-                    block.position.set(
-                        x * spacing - offset,
-                        y * spacing - offset,
-                        z * spacing - offset
-                    );
-                    cubeGroup.add(block);
-                }
-            }
-        }
-    }
-    group.add(cubeGroup);
-
-    // Outer wireframe
-    const wireGeo = new THREE.BoxGeometry(1.3, 1.3, 1.3);
-    const wireMat = new THREE.MeshBasicMaterial({
-        color: COLORS.cyan,
+    // ── Tech wireframe icosahedron overlay ──
+    const icoWireMat = new THREE.MeshBasicMaterial({
+        color: 0xFFAA66,
         wireframe: true,
         transparent: true,
-        opacity: 0.1,
+        opacity: 0.18,
     });
-    group.add(new THREE.Mesh(wireGeo, wireMat));
+    const icoWire = new THREE.Mesh(new THREE.IcosahedronGeometry(1.07, 2), icoWireMat);
+    group.add(icoWire);
 
-    // Glow
-    group.add(createGlowSprite(COLORS.cyan, 3.5));
+    // ── Outer tech shell ──
+    const outerShell = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(1.14, 3),
+        new THREE.MeshBasicMaterial({ color: 0xFF8844, wireframe: true, transparent: true, opacity: 0.07 })
+    );
+    group.add(outerShell);
 
-    // Label
-    const label = createLabel('INTELICA', COLORS.cyan);
-    label.position.y = 1.5;
+    // ── Atmosphere halo ──
+    const atmosphere = new THREE.Mesh(
+        new THREE.SphereGeometry(1.22, 64, 64),
+        new THREE.MeshBasicMaterial({ color: 0xD06030, transparent: true, opacity: 0.06, side: THREE.BackSide })
+    );
+    group.add(atmosphere);
+
+    // ── Latitude data rings ──
+    const latRingMat = new THREE.LineBasicMaterial({
+        color: 0xFFCC88, transparent: true, opacity: 0.28,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    [-0.45, 0, 0.45].forEach((yOffset) => {
+        const r = Math.sqrt(1.08 * 1.08 - yOffset * yOffset);
+        const pts = [];
+        for (let i = 0; i <= 64; i++) {
+            const a = (i / 64) * Math.PI * 2;
+            pts.push(new THREE.Vector3(r * Math.cos(a), yOffset, r * Math.sin(a)));
+        }
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), latRingMat));
+    });
+
+    // ── Meridian lines ──
+    const meridianMat = new THREE.LineBasicMaterial({
+        color: 0xFF9955, transparent: true, opacity: 0.15,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    for (let m = 0; m < 6; m++) {
+        const angle = (m / 6) * Math.PI;
+        const mPts = [];
+        for (let i = 0; i <= 48; i++) {
+            const phi = (i / 48) * Math.PI;
+            mPts.push(new THREE.Vector3(
+                1.08 * Math.sin(phi) * Math.cos(angle),
+                1.08 * Math.cos(phi),
+                1.08 * Math.sin(phi) * Math.sin(angle)
+            ));
+        }
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(mPts), meridianMat));
+    }
+
+    // ── Orbital data rings ──
+    const ringPts = Array.from({ length: 129 }, (_, i) => {
+        const a = (i / 128) * Math.PI * 2;
+        return new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+    });
+    const ringGeo = new THREE.BufferGeometry().setFromPoints(ringPts);
+
+    const dataRing1 = new THREE.Line(ringGeo,
+        new THREE.LineBasicMaterial({ color: 0xFFAA55, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    dataRing1.scale.setScalar(1.38);
+    dataRing1.rotation.x = Math.PI / 2.3;
+    dataRing1.rotation.z = 0.4;
+    group.add(dataRing1);
+
+    const dataRing2 = new THREE.Line(ringGeo,
+        new THREE.LineBasicMaterial({ color: 0xFFAA55, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    dataRing2.scale.setScalar(1.28);
+    dataRing2.rotation.x = Math.PI / 2.8;
+    dataRing2.rotation.z = -0.9;
+    group.add(dataRing2);
+
+    group.userData.icoWire = icoWire;
+    group.userData.outerShell = outerShell;
+    group.userData.dataRing1 = dataRing1;
+    group.userData.dataRing2 = dataRing2;
+
+    // ── Tech arcs ──
+    const arcMat = new THREE.LineBasicMaterial({
+        color: 0xFFCC99, transparent: true, opacity: 0.40,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const createArc = (radius, tiltX, tiltY, phase, amplitude) => {
+        const pts = [];
+        for (let i = 0; i <= 96; i++) {
+            const t = (i / 96) * Math.PI * 2;
+            pts.push(new THREE.Vector3(radius * Math.cos(t), 0.08 * Math.sin(t * 2 + phase) * amplitude, radius * Math.sin(t)));
+        }
+        const arc = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), arcMat);
+        arc.rotation.x = tiltX;
+        arc.rotation.y = tiltY;
+        return arc;
+    };
+    group.add(createArc(1.32, Math.PI / 2, 0, 0.3, 1));
+    group.add(createArc(1.28, Math.PI / 2.5, Math.PI / 5, 1.7, 0.8));
+    group.add(createArc(1.24, Math.PI / 2.2, -Math.PI / 8, 3.1, 0.7));
+
+    // ── Surface circuit traces ──
+    const circuitMat = new THREE.LineBasicMaterial({
+        color: 0xFFDDB0, transparent: true, opacity: 0.38,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const circuitGroup = new THREE.Group();
+    [
+        { radius: 0.92, offsetY: 0.4, phase: 0.2, loops: 1.7 },
+        { radius: 0.84, offsetY: 0.05, phase: 1.6, loops: 1.4 },
+        { radius: 0.76, offsetY: -0.25, phase: 2.9, loops: 1.2 },
+    ].forEach(({ radius, offsetY, phase, loops }) => {
+        const pts = [];
+        for (let i = 0; i <= 40; i++) {
+            const theta = phase + (i / 40) * loops;
+            pts.push(new THREE.Vector3(radius * Math.cos(theta), offsetY + 0.03 * Math.sin(theta * 3), radius * Math.sin(theta)));
+        }
+        circuitGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), circuitMat));
+    });
+    [
+        [new THREE.Vector3(0.68, 0.18, 0.47), new THREE.Vector3(0.22, 0.02, 0.92)],
+        [new THREE.Vector3(-0.73, -0.12, 0.36), new THREE.Vector3(-0.18, 0.26, 0.86)],
+        [new THREE.Vector3(0.5, -0.28, -0.71), new THREE.Vector3(0.14, -0.08, -0.95)],
+    ].forEach(([start, end]) => {
+        circuitGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([start, end]), circuitMat));
+    });
+    group.add(circuitGroup);
+
+    // ── Data node spheres at key positions ──
+    const dnGeo = new THREE.SphereGeometry(0.055, 10, 10);
+    const dnMat = new THREE.MeshStandardMaterial({
+        color: 0xFFCC88, emissive: 0xFF8833, emissiveIntensity: 0.7,
+        metalness: 0.6, roughness: 0.15,
+    });
+    [
+        new THREE.Vector3(1.08, 0, 0),
+        new THREE.Vector3(-1.08, 0, 0),
+        new THREE.Vector3(0, 1.08, 0),
+        new THREE.Vector3(0, -1.08, 0),
+        new THREE.Vector3(0.76, 0.76, 0),
+        new THREE.Vector3(-0.76, 0, 0.76),
+        new THREE.Vector3(0.54, -0.54, -0.76),
+    ].forEach((pos) => {
+        const dn = new THREE.Mesh(dnGeo, dnMat);
+        dn.position.copy(pos);
+        group.add(dn);
+    });
+
+    // ── Equatorial bands ──
+    const bandMat = new THREE.MeshBasicMaterial({ color: 0xFF9955, transparent: true, opacity: 0.12 });
+    const band1 = new THREE.Mesh(new THREE.TorusGeometry(1.105, 0.055, 8, 120), bandMat);
+    band1.rotation.x = Math.PI / 2;
+    group.add(band1);
+    const band2 = band1.clone();
+    band2.rotation.z = Math.PI / 4;
+    group.add(band2);
+
+    // ── Glow & label ──
+    group.add(createGlowSprite(0xA84820, 2.8));
+    boostNodeGlow(group, 0xA84820, 0.85);
+
+    const label = createLabel('INTELICA', 0xD06028);
+    label.position.y = 1.85;
     group.add(label);
 
-    // Hitbox
+    // ── Hitbox ──
     const hitbox = new THREE.Mesh(
-        new THREE.SphereGeometry(1.2, 8, 8),
+        new THREE.SphereGeometry(1.4, 8, 8),
         new THREE.MeshBasicMaterial({ visible: false })
     );
     hitbox.userData = { nodeKey: 'intelica' };
@@ -537,6 +720,7 @@ function createIntelicaNode() {
 
     return group;
 }
+
 
 // --- Node 3: Education (Neural Network) ---
 function createEducationNode() {
@@ -552,7 +736,7 @@ function createEducationNode() {
     });
 
     const neuronPositions = [];
-    const neuronCount = 30;
+    const neuronCount = isMobile ? 18 : 30;
     for (let i = 0; i < neuronCount; i++) {
         const r = 0.3 + Math.random() * 0.8;
         const theta = Math.random() * Math.PI * 2;
@@ -589,6 +773,7 @@ function createEducationNode() {
 
     // Glow
     group.add(createGlowSprite(COLORS.purple, 4));
+    boostNodeGlow(group, COLORS.purple, 1.15);
 
     // Label
     const label = createLabel('EDUCATION', COLORS.purple);
@@ -655,6 +840,7 @@ function createInnovationNode() {
 
     // Glow
     group.add(createGlowSprite(COLORS.gold, 3.5));
+    boostNodeGlow(group, COLORS.gold, 1.2);
 
     // Label
     const label = createLabel('EXPERIENCE', COLORS.gold);
@@ -737,56 +923,103 @@ function createAmbientSound() {
     masterGain.gain.value = 0;
     masterGain.connect(ctx.destination);
 
-    const baseDrone = ctx.createOscillator();
-    baseDrone.type = 'triangle';
-    baseDrone.frequency.value = 36;
-    const baseGain = ctx.createGain();
-    baseGain.gain.value = 0.035;
-    baseDrone.connect(baseGain).connect(masterGain);
-    baseDrone.start();
+    // Warm Low-pass Filter for cosmic ambient music
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 550;
+    filter.Q.value = 1.0;
 
-    const subDrone = ctx.createOscillator();
-    subDrone.type = 'sine';
-    subDrone.frequency.value = 22;
-    const subGain = ctx.createGain();
-    subGain.gain.value = 0.02;
-    subDrone.connect(subGain).connect(masterGain);
-    subDrone.start();
-
-    const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-    const noiseData = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < noiseData.length; i++) {
-        noiseData[i] = (Math.random() * 2 - 1) * 0.12;
-    }
-    const noiseSource = ctx.createBufferSource();
-    noiseSource.buffer = noiseBuffer;
-    noiseSource.loop = true;
-
-    const noiseFilter = ctx.createBiquadFilter();
-    noiseFilter.type = 'lowpass';
-    noiseFilter.frequency.value = 720;
-    noiseFilter.Q.value = 0.8;
-
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.value = 0.015;
-    noiseSource.connect(noiseFilter).connect(noiseGain).connect(masterGain);
-    noiseSource.start();
-
-    const filterLFO = ctx.createOscillator();
-    filterLFO.type = 'sine';
-    filterLFO.frequency.value = 0.085;
+    // Filter modulation LFO (gentle breathing effect)
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.07; // ~14s slow cycle
     const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 360;
-    filterLFO.connect(lfoGain).connect(noiseFilter.frequency);
-    filterLFO.start();
+    lfoGain.gain.value = 160;
+    lfo.connect(lfoGain).connect(filter.frequency);
+    lfo.start();
+
+    filter.connect(masterGain);
+
+    // Calming chord progression frequencies (Cmaj9 -> Am9 -> Fmaj7 -> G6/9)
+    const chords = [
+        [130.81, 164.81, 196.00, 246.94, 293.66], // Cmaj9
+        [110.00, 164.81, 196.00, 261.63, 329.63], // Am9
+        [87.31,  130.81, 164.81, 220.00, 261.63], // Fmaj7
+        [98.00,  146.83, 196.00, 246.94, 329.63]  // G6/9
+    ];
+
+    let currentChordIndex = 0;
+
+    function playNextChord() {
+        if (!audioState.enabled || ctx.state === 'suspended') return;
+        const now = ctx.currentTime;
+        const duration = 6.5; // seconds per chord
+        const chordFreqs = chords[currentChordIndex];
+
+        chordFreqs.forEach((freq, idx) => {
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const noteGain = ctx.createGain();
+
+            osc1.type = 'sine';
+            osc2.type = 'triangle';
+            osc1.frequency.value = freq;
+            osc2.frequency.value = freq * 1.0025; // Soft detune warmth
+
+            noteGain.gain.setValueAtTime(0, now);
+            const peakGain = (0.052 - idx * 0.007);
+            noteGain.gain.linearRampToValueAtTime(peakGain, now + 2.2);
+            noteGain.gain.setValueAtTime(peakGain, now + 4.2);
+            noteGain.gain.linearRampToValueAtTime(0, now + duration);
+
+            osc1.connect(noteGain);
+            osc2.connect(noteGain);
+            noteGain.connect(filter);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + duration + 0.1);
+            osc2.stop(now + duration + 0.1);
+        });
+
+        currentChordIndex = (currentChordIndex + 1) % chords.length;
+    }
+
+    // Soft starry chime melody (Pentatonic notes)
+    const chimes = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+    function playStarChime() {
+        if (!audioState.enabled || ctx.state === 'suspended') return;
+        const now = ctx.currentTime;
+        const freq = chimes[Math.floor(Math.random() * chimes.length)];
+        const osc = ctx.createOscillator();
+        const chimeGain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+
+        chimeGain.gain.setValueAtTime(0, now);
+        chimeGain.gain.linearRampToValueAtTime(0.024, now + 0.15);
+        chimeGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+
+        osc.connect(chimeGain);
+        chimeGain.connect(masterGain);
+
+        osc.start(now);
+        osc.stop(now + 2.9);
+    }
+
+    const chordInterval = setInterval(playNextChord, 5500);
+    const chimeInterval = setInterval(() => {
+        if (Math.random() > 0.35) playStarChime();
+    }, 3000);
 
     audioState.started = true;
     audioState.enabled = false;
     audioState.context = ctx;
     audioState.masterGain = masterGain;
-    audioState.oscillators = [baseDrone, subDrone];
-    audioState.noiseSource = noiseSource;
-    audioState.filterLFO = filterLFO;
+    audioState.chordInterval = chordInterval;
+    audioState.chimeInterval = chimeInterval;
+    audioState.playNextChord = playNextChord;
 }
 
 function setAudioControlState(enabled) {
@@ -806,21 +1039,31 @@ function toggleAmbientAudio() {
     if (!audioState.context) return;
 
     const now = audioState.context.currentTime;
-    audioState.context.resume();
+    if (audioState.context.state === 'suspended') {
+        audioState.context.resume();
+    }
     audioState.masterGain.gain.cancelScheduledValues(now);
 
     if (!audioState.enabled) {
-        audioState.masterGain.gain.setValueAtTime(audioState.masterGain.gain.value || 0, now);
-        audioState.masterGain.gain.linearRampToValueAtTime(0.065, now + 1.8);
         audioState.enabled = true;
+        audioState.masterGain.gain.setValueAtTime(audioState.masterGain.gain.value || 0, now);
+        audioState.masterGain.gain.linearRampToValueAtTime(0.32, now + 1.5);
+        if (audioState.playNextChord) audioState.playNextChord();
     } else {
-        audioState.masterGain.gain.setValueAtTime(audioState.masterGain.gain.value || 0.065, now);
-        audioState.masterGain.gain.linearRampToValueAtTime(0, now + 1.2);
         audioState.enabled = false;
+        audioState.masterGain.gain.setValueAtTime(audioState.masterGain.gain.value || 0.32, now);
+        audioState.masterGain.gain.linearRampToValueAtTime(0, now + 1.2);
     }
 
     setAudioControlState(audioState.enabled);
     saveAudioPreference();
+}
+
+function activateAmbientAudio() {
+    // Auto-start ambient audio on first interaction if user previously enabled it
+    if (!audioState.started && audioState.persistedEnabled) {
+        toggleAmbientAudio();
+    }
 }
 
 function transitionToNode(key) {
@@ -842,7 +1085,7 @@ function transitionToNode(key) {
     // Animate
     const startPos = camera.position.clone();
     const startTarget = state.cameraTarget.clone();
-    const duration = 1500;
+    const duration = 600;
     const startTime = performance.now();
 
     function animateTransition(now) {
@@ -972,16 +1215,21 @@ function onMouseMove(e) {
     state.mouseNorm.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
     // Crosshair follows cursor
-    const crosshair = document.getElementById('crosshair');
-    crosshair.style.left = e.clientX + 'px';
-    crosshair.style.top = e.clientY + 'px';
+    if (crosshairEl) {
+        crosshairEl.style.left = e.clientX + 'px';
+        crosshairEl.style.top = e.clientY + 'px';
+    }
 
-    // Drag orbit
-    if (state.isDragging && state.introComplete && !state.activeNode) {
+    // Drag orbit (full 2D: horizontal + vertical)
+    if (state.isDragging && state.introComplete) {
         const deltaX = e.clientX - state.dragStart.x;
         const deltaY = e.clientY - state.dragStart.y;
-        state.sphericalDelta.theta = -deltaX * 0.005;
-        state.sphericalDelta.phi = -deltaY * 0.003;
+        state.dragDistance += Math.abs(deltaX) + Math.abs(deltaY);
+        const sensitivity = isMobile ? 0.038 : 0.050;
+        const inertiaFactor = isMobile ? 0.025 : 0.035;
+        state.sphericalDelta.theta = -deltaX * sensitivity;
+        state.sphericalDelta.phi = deltaY * sensitivity;
+        state.dragVelocity.set(-deltaX * inertiaFactor, deltaY * inertiaFactor);
         state.dragStart.set(e.clientX, e.clientY);
         state.autoOrbit = false;
     }
@@ -989,19 +1237,31 @@ function onMouseMove(e) {
 
 function onMouseDown(e) {
     if (e.button !== 0) return;
+
+    // Don't activate drag when clicking on interactive elements
+    const target = e.target;
+    if (target.closest('button, a, .btn-back, .action-btn, .hud-button, .nav-dot, #audio-control, .detail-panel')) return;
+
     activateAmbientAudio();
     state.isDragging = true;
     state.dragStart.set(e.clientX, e.clientY);
+    state.dragDistance = 0;
 }
 
 function onMouseUp() {
     if (state.isDragging) {
         state.isDragging = false;
+
+        // Restore cursor
+        document.body.style.cursor = state.hoveredNode ? 'none' : 'default';
     }
 }
 
 function onClick(e) {
     if (!state.introComplete || state.isTransitioning) return;
+
+    // Ignorar click si fue un drag (movimiento mayor a 10px)
+    if (state.dragDistance > 10) return;
 
     state.raycaster.setFromCamera(state.mouseNorm, camera);
     const intersects = state.raycaster.intersectObjects(clickableObjects);
@@ -1025,12 +1285,15 @@ function onTouchStart(e) {
 }
 
 function onTouchMove(e) {
-    if (e.touches.length === 1 && state.isDragging && !state.activeNode) {
+    if (e.touches.length === 1 && state.isDragging) {
         const touch = e.touches[0];
         const deltaX = touch.clientX - state.dragStart.x;
         const deltaY = touch.clientY - state.dragStart.y;
-        state.sphericalDelta.theta = -deltaX * 0.005;
-        state.sphericalDelta.phi = -deltaY * 0.003;
+        const sensitivity = isMobile ? 0.038 : 0.050;
+        const inertiaFactor = isMobile ? 0.025 : 0.035;
+        state.sphericalDelta.theta = -deltaX * sensitivity;
+        state.sphericalDelta.phi = deltaY * sensitivity;
+        state.dragVelocity.set(-deltaX * inertiaFactor, deltaY * inertiaFactor);
         state.dragStart.set(touch.clientX, touch.clientY);
         state.autoOrbit = false;
     }
@@ -1048,6 +1311,23 @@ function onTouchEnd(e) {
     }
 }
 
+function onMouseWheel(e) {
+    // Allow native scroll inside panel-body sections
+    const panelBody = e.target.closest('.panel-body');
+    if (panelBody) {
+        // Don't prevent default — let the browser scroll the panel naturally
+        return;
+    }
+
+    e.preventDefault();
+    if (!state.introComplete || state.isTransitioning) return;
+
+    // Zoom with mouse wheel
+    const zoomSpeed = 0.5;
+    const zoomDelta = e.deltaY > 0 ? 1 : -1;
+    state.cameraDistance = Math.max(5, Math.min(40, state.cameraDistance + zoomDelta * zoomSpeed));
+}
+
 window.addEventListener('mousemove', onMouseMove, { passive: true });
 window.addEventListener('mousedown', onMouseDown);
 window.addEventListener('mouseup', onMouseUp);
@@ -1055,19 +1335,14 @@ window.addEventListener('click', onClick);
 window.addEventListener('touchstart', onTouchStart, { passive: true });
 window.addEventListener('touchmove', onTouchMove, { passive: true });
 window.addEventListener('touchend', onTouchEnd);
+window.addEventListener('wheel', onMouseWheel, { passive: false });
 
 // Nav dots
 document.querySelectorAll('.nav-dot').forEach(dot => {
     dot.addEventListener('click', () => {
         const key = dot.dataset.node;
         if (state.activeNode === key) return;
-        if (state.activeNode) {
-            // Return first, then go
-            returnToOrbit();
-            setTimeout(() => transitionToNode(key), 600);
-        } else {
-            transitionToNode(key);
-        }
+        transitionToNode(key);
     });
 });
 
@@ -1125,7 +1400,7 @@ function drawRadarChart() {
             const y = cy + r * Math.sin(a);
             j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         }
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.08)';
+        ctx.strokeStyle = 'rgba(238, 244, 255, 1)';
         ctx.lineWidth = 1;
         ctx.stroke();
     }
@@ -1136,7 +1411,7 @@ function drawRadarChart() {
         ctx.beginPath();
         ctx.moveTo(cx, cy);
         ctx.lineTo(cx + radius * Math.cos(a), cy + radius * Math.sin(a));
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.1)';
+        ctx.strokeStyle = 'rgba(238, 244, 255, 1)';
         ctx.lineWidth = 1;
         ctx.stroke();
     }
@@ -1151,9 +1426,9 @@ function drawRadarChart() {
         const y = cy + r * Math.sin(a);
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
-    ctx.fillStyle = 'rgba(0, 240, 255, 0.1)';
+    ctx.fillStyle = 'rgba(238, 244, 255, 0.15)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
+    ctx.strokeStyle = 'rgba(238, 244, 255, 1)';
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -1166,12 +1441,12 @@ function drawRadarChart() {
 
         ctx.beginPath();
         ctx.arc(x, y, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#00F0FF';
+        ctx.fillStyle = '#eef4ff';
         ctx.fill();
 
         ctx.beginPath();
         ctx.arc(x, y, 7, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.3)';
+        ctx.strokeStyle = 'rgba(238, 244, 255, 1)';
         ctx.lineWidth = 1;
         ctx.stroke();
     }
@@ -1180,7 +1455,7 @@ function drawRadarChart() {
     ctx.font = '500 10px "Share Tech Mono", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(200, 215, 240, 0.6)';
+    ctx.fillStyle = 'rgba(238, 244, 255, 1)';
 
     for (let i = 0; i < n; i++) {
         const a = i * angleStep - Math.PI / 2;
@@ -1237,25 +1512,12 @@ window.addEventListener('resize', onResize);
 // ============================================
 // ANIMATION LOOP
 // ============================================
-let frameCount = 0;
-let lastFpsTime = performance.now();
 
 function animate() {
     requestAnimationFrame(animate);
 
     const time = state.clock.getElapsedTime();
     const delta = state.clock.getDelta();
-
-    // FPS counter
-    frameCount++;
-    const fpsNow = performance.now();
-    if (fpsNow - lastFpsTime >= 500) {
-        const fps = Math.round(frameCount / ((fpsNow - lastFpsTime) / 1000));
-        const fpsEl = document.getElementById('hud-fps');
-        if (fpsEl) fpsEl.textContent = fps + ' FPS';
-        frameCount = 0;
-        lastFpsTime = fpsNow;
-    }
 
     // --- Update particles ---
     particles.material.uniforms.uTime.value = time;
@@ -1269,21 +1531,21 @@ function animate() {
     chromaPass.uniforms.uTime.value = time;
 
     // --- Node orbits ---
-    const t1 = time * ORBIT_SPEEDS.intelica;
+    const t1 = time * ORBIT_SPEEDS.intelica + state.orbitAngle;
     nodes.intelica.position.set(
         ORBIT_RADII.intelica * Math.cos(t1) * Math.cos(0.3),
         1.5 + Math.sin(t1 * 1.3) * 0.5,
         ORBIT_RADII.intelica * Math.sin(t1) + Math.sin(0.1) * 2
     );
 
-    const t2 = time * ORBIT_SPEEDS.education + Math.PI * 0.7;
+    const t2 = time * ORBIT_SPEEDS.education + Math.PI * 0.7 + state.orbitAngle;
     nodes.education.position.set(
         ORBIT_RADII.education * Math.cos(t2) * Math.cos(-0.2),
         2 + Math.sin(t2 * 0.8) * 0.8,
         ORBIT_RADII.education * Math.sin(t2) * Math.cos(-0.15)
     );
 
-    const t3 = time * ORBIT_SPEEDS.innovation + Math.PI * 1.3;
+    const t3 = time * ORBIT_SPEEDS.innovation + Math.PI * 1.3 + state.orbitAngle;
     nodes.innovation.position.set(
         ORBIT_RADII.innovation * Math.cos(t3) * Math.cos(0.15),
         -2 + Math.sin(t3 * 0.9) * 0.6,
@@ -1296,18 +1558,28 @@ function animate() {
     nodes.core.children[1].rotation.y = -time * 0.2;
     nodes.core.children[2].rotation.y = time * 0.3;
     nodes.core.children[2].rotation.x = time * 0.2;
+    nodes.core.rotation.y = time * 0.08;
+    nodes.core.rotation.x = Math.sin(time * 0.12) * 0.1;
+    if (nodes.core.children[4]) nodes.core.children[4].rotation.z = time * 0.25;
+    if (nodes.core.children[5]) nodes.core.children[5].rotation.x = time * 0.18;
 
     // Intelica cube rotation
     nodes.intelica.children[0].rotation.y = time * 0.12;
     nodes.intelica.children[0].rotation.x = time * 0.08;
+    nodes.intelica.rotation.y = t1 * 0.75 + time * 0.12;
+    nodes.intelica.rotation.x = Math.sin(t1 * 0.6) * 0.18;
+    nodes.intelica.rotation.z = Math.cos(t1 * 0.5) * 0.12;
 
     // Education neural network wobble
-    nodes.education.rotation.y = time * 0.1;
+    nodes.education.rotation.y = t2 * 0.7 + time * 0.1;
+    nodes.education.rotation.x = Math.sin(t2 * 0.45) * 0.16;
 
     // Innovation ring rotation
     nodes.innovation.children[0].rotation.x = Math.PI / 2 + time * 0.2;
     nodes.innovation.children[0].rotation.z = time * 0.15;
     nodes.innovation.children[1].rotation.y = time * 0.3;
+    nodes.innovation.rotation.y = t3 * 0.65 + time * 0.08;
+    nodes.innovation.rotation.z = Math.sin(t3 * 0.5) * 0.15;
 
     // --- Update connection lines ---
     connectionLines.forEach(({ line, fromKey, toKey }) => {
@@ -1327,26 +1599,29 @@ function animate() {
     if (state.introComplete && !state.isTransitioning && !state.isDragging) {
         state.raycaster.setFromCamera(state.mouseNorm, camera);
         const intersects = state.raycaster.intersectObjects(clickableObjects);
-        const crosshair = document.getElementById('crosshair');
 
         if (intersects.length > 0) {
             const key = intersects[0].object.userData.nodeKey;
             if (state.hoveredNode !== key) {
                 state.hoveredNode = key;
                 document.body.style.cursor = 'none';
-                crosshair.classList.remove('hidden');
-                crosshair.classList.add('visible');
+                if (crosshairEl) {
+                    crosshairEl.classList.remove('hidden');
+                    crosshairEl.classList.add('visible');
+                }
             }
             // Scale up hovered node
             const node = nodes[key];
             const targetScale = 1.1;
-            node.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
+            node.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.12);
         } else {
             if (state.hoveredNode) {
                 state.hoveredNode = null;
                 document.body.style.cursor = 'default';
-                crosshair.classList.add('hidden');
-                crosshair.classList.remove('visible');
+                if (crosshairEl) {
+                    crosshairEl.classList.add('hidden');
+                    crosshairEl.classList.remove('visible');
+                }
             }
         }
 
@@ -1358,36 +1633,67 @@ function animate() {
         });
     }
 
+    // --- Follow active node orbit ---
+    if (state.activeNode && !state.isTransitioning) {
+        const node = nodes[state.activeNode];
+        const offset = new THREE.Vector3(2.5, 1.0, 3.5);
+        const targetCamPos = node.position.clone().add(offset);
+        camera.position.lerp(targetCamPos, 0.06);
+        state.cameraTarget.lerp(node.position, 0.06);
+        camera.lookAt(state.cameraTarget);
+    }
+
+    // --- Orbit highlighting ---
+    Object.entries(orbitRings).forEach(([key, ring]) => {
+        let targetOpacity = ORBIT_HIGHLIGHT.default;
+        if (state.activeNode === key) targetOpacity = ORBIT_HIGHLIGHT.active;
+        else if (state.hoveredNode === key) targetOpacity = ORBIT_HIGHLIGHT.hover;
+        ring.material.opacity += (targetOpacity - ring.material.opacity) * 0.22;
+        ring.scale.lerp(new THREE.Vector3(targetOpacity === ORBIT_HIGHLIGHT.active ? 1.04 : 1.015, 1.015, 1.015), 0.1);
+    });
+
     // --- Camera orbit when not focused ---
     if (state.autoOrbit && state.introComplete && !state.isTransitioning && !state.activeNode) {
         state.spherical.theta += 0.002;
     }
 
     // Apply drag deltas
-    if (!state.activeNode && !state.isTransitioning && state.introComplete) {
-        state.spherical.theta += state.sphericalDelta.theta;
-        state.spherical.phi += state.sphericalDelta.phi;
+    if (!state.isTransitioning && state.introComplete) {
+        if (state.activeNode) {
+            // When a node is active, horizontal drag rotates the orbit angle of all planets
+            const deltaTheta = state.sphericalDelta.theta + state.dragVelocity.x * 1.2;
+            state.orbitAngle -= deltaTheta * 0.4;
 
-        // Clamp phi
-        state.spherical.phi = Math.max(0.3, Math.min(Math.PI - 0.3, state.spherical.phi));
+            // Damping and momentum
+            state.sphericalDelta.theta *= 0.82;
+            state.sphericalDelta.phi *= 0.82;
+            state.dragVelocity.multiplyScalar(0.78);
+        } else {
+            state.spherical.theta += state.sphericalDelta.theta + state.dragVelocity.x * 1.2;
+            state.spherical.phi += state.sphericalDelta.phi + state.dragVelocity.y * 1.2;
 
-        // Damping
-        state.sphericalDelta.theta *= 0.92;
-        state.sphericalDelta.phi *= 0.92;
+            // Clamp phi
+            state.spherical.phi = Math.max(0.28, Math.min(Math.PI - 0.28, state.spherical.phi));
 
-        // Convert spherical to cartesian
-        const radius = 16;
-        const targetX = radius * Math.sin(state.spherical.phi) * Math.sin(state.spherical.theta);
-        const targetY = radius * Math.cos(state.spherical.phi);
-        const targetZ = radius * Math.sin(state.spherical.phi) * Math.cos(state.spherical.theta);
+            // Damping and momentum
+            state.sphericalDelta.theta *= 0.82;
+            state.sphericalDelta.phi *= 0.82;
+            state.dragVelocity.multiplyScalar(0.78);
 
-        camera.position.x += (targetX - camera.position.x) * 0.05;
-        camera.position.y += (targetY - camera.position.y) * 0.05;
-        camera.position.z += (targetZ - camera.position.z) * 0.05;
+            // Convert spherical to cartesian with zoom support
+            const radius = state.cameraDistance;
+            const targetX = radius * Math.sin(state.spherical.phi) * Math.sin(state.spherical.theta);
+            const targetY = radius * Math.cos(state.spherical.phi);
+            const targetZ = radius * Math.sin(state.spherical.phi) * Math.cos(state.spherical.theta);
 
-        // Subtle mouse parallax
-        camera.position.x += state.mouseNorm.x * 0.15;
-        camera.position.y += state.mouseNorm.y * 0.1;
+            camera.position.x += (targetX - camera.position.x) * 0.12;
+            camera.position.y += (targetY - camera.position.y) * 0.12;
+            camera.position.z += (targetZ - camera.position.z) * 0.12;
+        }
+
+        // Subtle mouse parallax (disabled)
+        // camera.position.x += state.mouseNorm.x * 0.24;
+        // camera.position.y += state.mouseNorm.y * 0.16;
 
         camera.lookAt(state.cameraTarget);
     }
@@ -1412,6 +1718,7 @@ const loadingScreen = document.getElementById('loading-screen');
 const hudOverlay = document.getElementById('hud-overlay');
 const navDots = document.getElementById('nav-dots');
 const progressEl = document.getElementById('load-progress');
+const loadingBarFill = document.getElementById('loading-bar-fill');
 
 // Simulate loading
 let loadProgress = 0;
@@ -1427,8 +1734,22 @@ const loadInterval = setInterval(() => {
             playIntroCinematic();
         }, 400);
     }
-    if (progressEl) progressEl.textContent = Math.round(loadProgress) + '%';
+    const progressValue = Math.round(loadProgress);
+    if (progressEl) progressEl.textContent = progressValue + '%';
+    if (loadingBarFill) loadingBarFill.style.width = `${progressValue}%`;
 }, 200);
+
+setTimeout(() => {
+    if (loadProgress < 100) {
+        loadProgress = 100;
+        if (progressEl) progressEl.textContent = '100%';
+        if (loadingBarFill) loadingBarFill.style.width = '100%';
+        loadingScreen.classList.add('fade-out');
+        hudOverlay.classList.add('visible');
+        navDots.classList.add('visible');
+        playIntroCinematic();
+    }
+}, 8000);
 
 // Start render loop
 animate();
