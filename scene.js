@@ -920,12 +920,29 @@ function getCameraPositionForNode(key) {
     return pos.clone().add(offset);
 }
 
+function unlockAudioContext(ctx) {
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+        ctx.resume();
+    }
+    try {
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+    } catch (e) {
+        // Fallback for devices not supporting silent buffer source
+    }
+}
+
 function createAmbientSound() {
     if (audioState.started) return;
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
 
     const ctx = new AudioContext();
+    unlockAudioContext(ctx);
     const masterGain = ctx.createGain();
     masterGain.gain.value = 0;
     masterGain.connect(ctx.destination);
@@ -958,7 +975,10 @@ function createAmbientSound() {
     let currentChordIndex = 0;
 
     function playNextChord() {
-        if (!audioState.enabled || ctx.state === 'suspended') return;
+        if (!audioState.enabled || !ctx) return;
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
         const now = ctx.currentTime;
         const duration = 6.5; // seconds per chord
         const chordFreqs = chords[currentChordIndex];
@@ -995,7 +1015,10 @@ function createAmbientSound() {
     // Soft starry chime melody (Pentatonic notes)
     const chimes = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
     function playStarChime() {
-        if (!audioState.enabled || ctx.state === 'suspended') return;
+        if (!audioState.enabled || !ctx) return;
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
         const now = ctx.currentTime;
         const freq = chimes[Math.floor(Math.random() * chimes.length)];
         const osc = ctx.createOscillator();
@@ -1045,10 +1068,8 @@ function toggleAmbientAudio() {
     createAmbientSound();
     if (!audioState.context) return;
 
+    unlockAudioContext(audioState.context);
     const now = audioState.context.currentTime;
-    if (audioState.context.state === 'suspended') {
-        audioState.context.resume();
-    }
     audioState.masterGain.gain.cancelScheduledValues(now);
 
     if (!audioState.enabled) {
@@ -1067,9 +1088,12 @@ function toggleAmbientAudio() {
 }
 
 function activateAmbientAudio() {
-    // Auto-start ambient audio on first interaction if user previously enabled it
     if (!audioState.started && audioState.persistedEnabled) {
         toggleAmbientAudio();
+    } else if (audioState.started && audioState.enabled && audioState.context) {
+        if (audioState.context.state === 'suspended') {
+            unlockAudioContext(audioState.context);
+        }
     }
 }
 
@@ -1549,7 +1573,13 @@ if (audioControl) {
         audioControl.textContent = 'ENABLE AMBIENCE';
     }
 
-    audioControl.addEventListener('click', toggleAmbientAudio);
+    const handleToggle = (e) => {
+        if (e && e.cancelable) e.preventDefault();
+        toggleAmbientAudio();
+    };
+
+    audioControl.addEventListener('click', handleToggle);
+    audioControl.addEventListener('touchend', handleToggle);
     audioControl.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
@@ -1560,17 +1590,12 @@ if (audioControl) {
 
 // Auto-start audio on first user interaction (required by browser autoplay policy)
 function autoStartAudioOnInteraction() {
-    if (audioState.started) return;
-    if (audioState.persistedEnabled) {
-        toggleAmbientAudio();
-    }
-    window.removeEventListener('click', autoStartAudioOnInteraction);
-    window.removeEventListener('touchstart', autoStartAudioOnInteraction);
-    window.removeEventListener('keydown', autoStartAudioOnInteraction);
+    activateAmbientAudio();
 }
-window.addEventListener('click', autoStartAudioOnInteraction);
-window.addEventListener('touchstart', autoStartAudioOnInteraction);
-window.addEventListener('keydown', autoStartAudioOnInteraction);
+window.addEventListener('click', autoStartAudioOnInteraction, { passive: true });
+window.addEventListener('touchstart', autoStartAudioOnInteraction, { passive: true });
+window.addEventListener('touchend', autoStartAudioOnInteraction, { passive: true });
+window.addEventListener('keydown', autoStartAudioOnInteraction, { passive: true });
 
 window.addEventListener('resize', onResize);
 
