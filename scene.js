@@ -64,6 +64,8 @@ const state = {
     dragVelocity: new THREE.Vector2(),
     sphericalDelta: { theta: 0, phi: 0 },
     spherical: { theta: 0, phi: Math.PI / 2.3 },
+    nodeSpherical: { theta: 0, phi: Math.PI / 2.3 },
+    nodeDistance: 4.5,
     damping: { theta: 0, phi: 0 },
 };
 
@@ -82,9 +84,14 @@ const audioState = {
 function loadAudioPreference() {
     try {
         const value = localStorage.getItem(audioState.storageKey);
-        audioState.persistedEnabled = value === 'true';
+        // Default to ON for first-time visitors (no key stored yet)
+        if (value === null) {
+            audioState.persistedEnabled = true;
+        } else {
+            audioState.persistedEnabled = value === 'true';
+        }
     } catch (error) {
-        audioState.persistedEnabled = false;
+        audioState.persistedEnabled = true;
     }
 }
 
@@ -1047,11 +1054,11 @@ function toggleAmbientAudio() {
     if (!audioState.enabled) {
         audioState.enabled = true;
         audioState.masterGain.gain.setValueAtTime(audioState.masterGain.gain.value || 0, now);
-        audioState.masterGain.gain.linearRampToValueAtTime(0.32, now + 1.5);
+        audioState.masterGain.gain.linearRampToValueAtTime(0.638, now + 1.5);
         if (audioState.playNextChord) audioState.playNextChord();
     } else {
         audioState.enabled = false;
-        audioState.masterGain.gain.setValueAtTime(audioState.masterGain.gain.value || 0.32, now);
+        audioState.masterGain.gain.setValueAtTime(audioState.masterGain.gain.value || 0.638, now);
         audioState.masterGain.gain.linearRampToValueAtTime(0, now + 1.2);
     }
 
@@ -1102,6 +1109,15 @@ function transitionToNode(key) {
             requestAnimationFrame(animateTransition);
         } else {
             state.isTransitioning = false;
+
+            // Calculate spherical angles relative to selected node for centered 3D orbit
+            const nodePos = nodes[key].position;
+            const offset = camera.position.clone().sub(nodePos);
+            const radius = Math.max(2, offset.length());
+            state.nodeDistance = radius;
+            state.nodeSpherical.phi = Math.max(0.15, Math.min(Math.PI - 0.15, Math.acos(Math.max(-1, Math.min(1, offset.y / radius)))));
+            state.nodeSpherical.theta = Math.atan2(offset.x, offset.z);
+
             // Show panel
             const panelId = NODE_CONFIG[key].panelId;
             const panel = document.getElementById(panelId);
@@ -1238,7 +1254,7 @@ function onMouseMove(e) {
 function onMouseDown(e) {
     if (e.button !== 0) return;
 
-    // Don't activate drag when clicking on interactive elements
+    // Don't activate drag when clicking on interactive elements or inside panels
     const target = e.target;
     if (target.closest('button, a, .btn-back, .action-btn, .hud-button, .nav-dot, #audio-control, .detail-panel')) return;
 
@@ -1277,18 +1293,38 @@ function onTouchStart(e) {
     if (e.touches.length === 1) {
         activateAmbientAudio();
         const touch = e.touches[0];
+
+        // Don't start drag if touching inside a detail panel (allow native scroll)
+        const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (touchTarget && touchTarget.closest('.detail-panel')) {
+            state.isDragging = false;
+            state._touchInsidePanel = true;
+            // Still record coords for tap detection on node hitboxes
+            state.mouseNorm.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            state.mouseNorm.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+            state.dragDistance = 0;
+            state.dragStart.set(touch.clientX, touch.clientY);
+            return;
+        }
+
+        state._touchInsidePanel = false;
         state.mouseNorm.x = (touch.clientX / window.innerWidth) * 2 - 1;
         state.mouseNorm.y = -(touch.clientY / window.innerHeight) * 2 + 1;
         state.isDragging = true;
+        state.dragDistance = 0;
         state.dragStart.set(touch.clientX, touch.clientY);
     }
 }
 
 function onTouchMove(e) {
+    // If touching inside a panel, let the browser handle scroll natively
+    if (state._touchInsidePanel) return;
+
     if (e.touches.length === 1 && state.isDragging) {
         const touch = e.touches[0];
         const deltaX = touch.clientX - state.dragStart.x;
         const deltaY = touch.clientY - state.dragStart.y;
+        state.dragDistance += Math.abs(deltaX) + Math.abs(deltaY);
         const sensitivity = isMobile ? 0.038 : 0.050;
         const inertiaFactor = isMobile ? 0.025 : 0.035;
         state.sphericalDelta.theta = -deltaX * sensitivity;
@@ -1300,7 +1336,16 @@ function onTouchMove(e) {
 }
 
 function onTouchEnd(e) {
+    const wasInsidePanel = state._touchInsidePanel;
+    state._touchInsidePanel = false;
     state.isDragging = false;
+
+    // If touch was inside a panel, don't try to navigate nodes
+    if (wasInsidePanel) return;
+
+    // Only treat as tap if drag distance was small
+    if (state.dragDistance > 10) return;
+
     // Simple tap detection for click
     if (!state.isTransitioning && state.introComplete) {
         state.raycaster.setFromCamera(state.mouseNorm, camera);
@@ -1325,7 +1370,11 @@ function onMouseWheel(e) {
     // Zoom with mouse wheel
     const zoomSpeed = 0.5;
     const zoomDelta = e.deltaY > 0 ? 1 : -1;
-    state.cameraDistance = Math.max(5, Math.min(40, state.cameraDistance + zoomDelta * zoomSpeed));
+    if (state.activeNode) {
+        state.nodeDistance = Math.max(2.5, Math.min(12, state.nodeDistance + zoomDelta * zoomSpeed));
+    } else {
+        state.cameraDistance = Math.max(5, Math.min(40, state.cameraDistance + zoomDelta * zoomSpeed));
+    }
 }
 
 window.addEventListener('mousemove', onMouseMove, { passive: true });
@@ -1495,8 +1544,10 @@ const audioControl = document.getElementById('audio-control');
 if (audioControl) {
     if (audioState.persistedEnabled) {
         audioControl.classList.add('active');
+        audioControl.textContent = 'DISABLE AMBIENCE';
+    } else {
+        audioControl.textContent = 'ENABLE AMBIENCE';
     }
-    audioControl.textContent = 'ENABLE AMBIENCE';
 
     audioControl.addEventListener('click', toggleAmbientAudio);
     audioControl.addEventListener('keydown', (event) => {
@@ -1507,11 +1558,31 @@ if (audioControl) {
     });
 }
 
+// Auto-start audio on first user interaction (required by browser autoplay policy)
+function autoStartAudioOnInteraction() {
+    if (audioState.started) return;
+    if (audioState.persistedEnabled) {
+        toggleAmbientAudio();
+    }
+    window.removeEventListener('click', autoStartAudioOnInteraction);
+    window.removeEventListener('touchstart', autoStartAudioOnInteraction);
+    window.removeEventListener('keydown', autoStartAudioOnInteraction);
+}
+window.addEventListener('click', autoStartAudioOnInteraction);
+window.addEventListener('touchstart', autoStartAudioOnInteraction);
+window.addEventListener('keydown', autoStartAudioOnInteraction);
+
 window.addEventListener('resize', onResize);
 
 // ============================================
 // ANIMATION LOOP
 // ============================================
+
+// Reusable static vectors to avoid GC pauses in frame loop
+const _vecTargetPos = new THREE.Vector3();
+const _vecHoverScale = new THREE.Vector3();
+const _vecNormalScale = new THREE.Vector3(1, 1, 1);
+const _vecRingScale = new THREE.Vector3();
 
 function animate() {
     requestAnimationFrame(animate);
@@ -1613,7 +1684,8 @@ function animate() {
             // Scale up hovered node
             const node = nodes[key];
             const targetScale = 1.1;
-            node.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.12);
+            _vecHoverScale.set(targetScale, targetScale, targetScale);
+            node.scale.lerp(_vecHoverScale, 0.12);
         } else {
             if (state.hoveredNode) {
                 state.hoveredNode = null;
@@ -1628,18 +1700,22 @@ function animate() {
         // Scale down non-hovered nodes
         Object.entries(nodes).forEach(([key, node]) => {
             if (key !== state.hoveredNode) {
-                node.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+                node.scale.lerp(_vecNormalScale, 0.1);
             }
         });
     }
 
     // --- Follow active node orbit ---
     if (state.activeNode && !state.isTransitioning) {
-        const node = nodes[state.activeNode];
-        const offset = new THREE.Vector3(2.5, 1.0, 3.5);
-        const targetCamPos = node.position.clone().add(offset);
-        camera.position.lerp(targetCamPos, 0.06);
-        state.cameraTarget.lerp(node.position, 0.06);
+        const pivotCenter = nodes[state.activeNode].position;
+        const radius = state.nodeDistance;
+        const targetX = pivotCenter.x + radius * Math.sin(state.nodeSpherical.phi) * Math.sin(state.nodeSpherical.theta);
+        const targetY = pivotCenter.y + radius * Math.cos(state.nodeSpherical.phi);
+        const targetZ = pivotCenter.z + radius * Math.sin(state.nodeSpherical.phi) * Math.cos(state.nodeSpherical.theta);
+
+        _vecTargetPos.set(targetX, targetY, targetZ);
+        camera.position.lerp(_vecTargetPos, 0.12);
+        state.cameraTarget.lerp(pivotCenter, 0.12);
         camera.lookAt(state.cameraTarget);
     }
 
@@ -1649,7 +1725,9 @@ function animate() {
         if (state.activeNode === key) targetOpacity = ORBIT_HIGHLIGHT.active;
         else if (state.hoveredNode === key) targetOpacity = ORBIT_HIGHLIGHT.hover;
         ring.material.opacity += (targetOpacity - ring.material.opacity) * 0.22;
-        ring.scale.lerp(new THREE.Vector3(targetOpacity === ORBIT_HIGHLIGHT.active ? 1.04 : 1.015, 1.015, 1.015), 0.1);
+        const s = targetOpacity === ORBIT_HIGHLIGHT.active ? 1.04 : 1.015;
+        _vecRingScale.set(s, 1.015, 1.015);
+        ring.scale.lerp(_vecRingScale, 0.1);
     });
 
     // --- Camera orbit when not focused ---
@@ -1660,14 +1738,19 @@ function animate() {
     // Apply drag deltas
     if (!state.isTransitioning && state.introComplete) {
         if (state.activeNode) {
-            // When a node is active, horizontal drag rotates the orbit angle of all planets
-            const deltaTheta = state.sphericalDelta.theta + state.dragVelocity.x * 1.2;
-            state.orbitAngle -= deltaTheta * 0.4;
+            // When a node is active, dragging orbits spherical around that node
+            state.nodeSpherical.theta += state.sphericalDelta.theta + state.dragVelocity.x * 1.2;
+            state.nodeSpherical.phi += state.sphericalDelta.phi + state.dragVelocity.y * 1.2;
+
+            // Clamp phi to avoid flipping camera at poles
+            state.nodeSpherical.phi = Math.max(0.15, Math.min(Math.PI - 0.15, state.nodeSpherical.phi));
 
             // Damping and momentum
             state.sphericalDelta.theta *= 0.82;
             state.sphericalDelta.phi *= 0.82;
             state.dragVelocity.multiplyScalar(0.78);
+
+            camera.lookAt(state.cameraTarget);
         } else {
             state.spherical.theta += state.sphericalDelta.theta + state.dragVelocity.x * 1.2;
             state.spherical.phi += state.sphericalDelta.phi + state.dragVelocity.y * 1.2;

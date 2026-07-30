@@ -46,6 +46,8 @@ html, body {
     cursor: default;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* --- Canvas Container --- */
@@ -73,6 +75,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 16px;
     transition: opacity 0.8s ease, visibility 0.8s ease;
 }
 
@@ -160,6 +163,8 @@ html, body {
     letter-spacing: 0.16em;
     text-transform: uppercase;
 }
+
+
 
 /* ============================================
    HUD OVERLAY
@@ -464,6 +469,7 @@ html, body {
     flex-direction: column;
     overflow: hidden;
     position: relative;
+    touch-action: auto;
 }
 
 .panel-chrome::before {
@@ -581,6 +587,9 @@ html, body {
     flex: 1;
     scrollbar-width: thin;
     scrollbar-color: var(--cyan-dim) transparent;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
 }
 
 .panel-body::-webkit-scrollbar {
@@ -1176,6 +1185,10 @@ html, body {
         padding: 50px 0 20px;
     }
 
+    .detail-panel.visible {
+        touch-action: none;
+    }
+
     .panel-chrome {
         margin: 0 12px;
         border-radius: 6px;
@@ -1241,6 +1254,36 @@ html, body {
 
 /* --- Small Mobile (≤480px) --- */
 @media (max-width: 480px) {
+    .loading-panel {
+        width: calc(100% - 32px);
+        padding: 24px 20px;
+        gap: 18px;
+    }
+
+    .loading-title {
+        font-size: clamp(28px, 8vw, 42px);
+    }
+
+    .loading-subtitle,
+    .loading-author {
+        font-size: 10px;
+        letter-spacing: 2px;
+    }
+
+    .loading-bar-track {
+        height: 14px;
+    }
+
+    .loading-percent {
+        font-size: 12px;
+    }
+
+    .loading-enter-btn {
+        padding: 14px 28px;
+        font-size: 12px;
+        letter-spacing: 2px;
+    }
+
     .panel-title {
         font-size: 18px;
     }
@@ -1265,5 +1308,22 @@ html, body {
     .skill-tag {
         font-size: 10px;
         padding: 4px 10px;
+    }
+}
+
+/* --- Very Small Mobile — Portrait (≤380px) --- */
+@media (max-width: 380px) {
+    .loading-panel {
+        width: calc(100% - 24px);
+        padding: 20px 16px;
+        gap: 14px;
+    }
+
+    .loading-title {
+        font-size: clamp(22px, 7vw, 32px);
+    }
+
+    .loading-bar-track {
+        height: 12px;
     }
 }
