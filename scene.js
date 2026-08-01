@@ -134,23 +134,11 @@ const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerH
 camera.position.copy(state.cameraPosition);
 
 try {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('webgl2', { antialias: !isMobile, alpha: false })
-        || canvas.getContext('webgl', { antialias: !isMobile, alpha: false })
-        || canvas.getContext('experimental-webgl', { antialias: !isMobile, alpha: false });
-
-    if (!context) {
-        throw new Error('No WebGL context available');
-    }
-
     renderer = new THREE.WebGLRenderer({
-        canvas,
-        context,
         antialias: !isMobile,
         alpha: false,
-        powerPreference: 'high-performance',
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1 : 2));
+    renderer.setPixelRatio(Math.max(1, Math.min(window.devicePixelRatio || 1, isMobile ? 1 : 2)));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
@@ -158,6 +146,8 @@ try {
     renderer.domElement.style.height = '100%';
     renderer.domElement.style.touchAction = 'none';
     renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = '0';
+    renderer.domElement.style.left = '0';
     if (container) {
         container.style.display = 'block';
         container.appendChild(renderer.domElement);
