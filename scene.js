@@ -122,8 +122,13 @@ function showWebGLFallback() {
     console.warn('WebGL is not available on this device.');
 }
 
-let webglSupported = true;
 let renderer = null;
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(COLORS.bg);
+scene.fog = new THREE.FogExp2(COLORS.bg, 0.018);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.copy(state.cameraPosition);
 
 try {
     renderer = new THREE.WebGLRenderer({
@@ -137,21 +142,14 @@ try {
     renderer.toneMappingExposure = 1.2;
     if (container) container.appendChild(renderer.domElement);
 } catch (error) {
-    webglSupported = false;
+    renderer = null;
     showWebGLFallback();
     console.error('Failed to initialize WebGL renderer:', error);
 }
 
-if (!webglSupported || !renderer) {
+if (!renderer) {
     throw new Error('WebGL renderer initialization failed');
 }
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(COLORS.bg);
-scene.fog = new THREE.FogExp2(COLORS.bg, 0.018);
-
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.copy(state.cameraPosition);
 
 const ChromaticAberrationShader = {
     uniforms: {
