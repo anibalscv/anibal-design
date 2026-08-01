@@ -22,7 +22,13 @@ const COLORS = {
     white: 0xffffff,
 };
 
-const isMobile = /Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent) || window.innerWidth <= 768;
+const isTouchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+const isMobileDevice = () => {
+    return isTouchCapable || /Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent) || window.innerWidth <= 900;
+};
+
+let isMobile = isMobileDevice();
+const defaultCameraDistance = isMobile ? 18 : 16;
 
 const NODE_CONFIG = {
     core: { position: new THREE.Vector3(0, 0, 0), color: COLORS.cyan, panelId: 'panel-core' },
@@ -52,10 +58,10 @@ const state = {
     introComplete: false,
     clock: new THREE.Clock(),
     cameraTarget: new THREE.Vector3(0, 0, 0),
-    cameraPosition: new THREE.Vector3(0, 2, 16),
-    defaultCamPos: new THREE.Vector3(0, 2, 16),
+    cameraPosition: new THREE.Vector3(0, 2, defaultCameraDistance),
+    defaultCamPos: new THREE.Vector3(0, 2, defaultCameraDistance),
     defaultCamTarget: new THREE.Vector3(0, 0, 0),
-    cameraDistance: 16,
+    cameraDistance: defaultCameraDistance,
     orbitAngle: 0,
     autoOrbit: true,
     isDragging: false,
@@ -116,12 +122,12 @@ const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerH
 camera.position.copy(state.cameraPosition);
 
 const renderer = new THREE.WebGLRenderer({
-    antialias: true,
+    antialias: !isMobile,
     alpha: false,
     powerPreference: 'high-performance',
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.25 : 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
 container.appendChild(renderer.domElement);
@@ -179,6 +185,21 @@ const ChromaticAberrationShader = {
 const chromaPass = new ShaderPass(ChromaticAberrationShader);
 composer.addPass(chromaPass);
 
+function applyDevicePerformanceSettings() {
+    isMobile = isMobileDevice();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2));
+    renderer.antialias = !isMobile;
+    bloomPass.strength = isMobile ? 0.35 : 0.8;
+    bloomPass.enabled = !isMobile;
+    chromaPass.uniforms.uIntensity.value = isMobile ? 0.001 : 0.002;
+    chromaPass.enabled = !isMobile;
+    if (renderer.domElement) {
+        renderer.domElement.style.width = '100%';
+        renderer.domElement.style.height = '100%';
+    }
+}
+applyDevicePerformanceSettings();
+
 // ============================================
 // LIGHTING
 // ============================================
@@ -201,7 +222,7 @@ scene.add(pointLight3);
 // BACKGROUND PARTICLES
 // ============================================
 function createParticleField() {
-    const count = isMobile ? 800 : 2000;
+    const count = isMobile ? 500 : 2000;
     const positions = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const colors = new Float32Array(count * 3);
@@ -1573,6 +1594,7 @@ function onResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);
     bloomPass.resolution.set(window.innerWidth, window.innerHeight);
+    applyDevicePerformanceSettings();
 }
 loadAudioPreference();
 
