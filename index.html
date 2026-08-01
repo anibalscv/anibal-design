@@ -462,11 +462,18 @@
                 await import(moduleUrl);
             } catch (error) {
                 console.error('Scene loading failed:', error);
-                await showFileFallback('This project needs a local HTTP server to run modules properly on Chrome mobile.');
+                await showFileFallback('This project needs a local HTTP server to run modules properly on file:// pages.');
             }
         }
 
-        loadSceneModule();
+        if (location.protocol === 'file:') {
+            loadSceneModule();
+        } else {
+            const sceneScript = document.createElement('script');
+            sceneScript.type = 'module';
+            sceneScript.src = 'scene.js';
+            document.body.appendChild(sceneScript);
+        }
     </script>
 </body>
 </html>
