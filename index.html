@@ -420,60 +420,9 @@
         <div class="fallback-panel">
             <h2>WebGL not supported</h2>
             <p>Your mobile device or browser cannot render the interactive orbit. Try updating the browser or opening this page on a device with WebGL enabled.</p>
-            <p>If you are viewing this from a local file, open the project through a local server instead.</p>
         </div>
     </div>
 
-    <script>
-        async function showFileFallback(message) {
-            const fallback = document.getElementById('webgl-fallback');
-            if (!fallback) return;
-            const title = fallback.querySelector('h2');
-            const paragraphs = fallback.querySelectorAll('p');
-            if (title) title.textContent = 'Open via local server';
-            if (paragraphs.length >= 2) {
-                paragraphs[0].textContent = message;
-                paragraphs[1].textContent = 'Run npm start or ./run-local.sh, then open http://localhost:8080 in Chrome.';
-            }
-            fallback.classList.remove('hidden');
-            fallback.classList.add('visible');
-        }
-
-        async function loadSceneModule() {
-            const baseUrl = new URL('.', location.href).href;
-            const sceneUrl = new URL('scene.js', baseUrl).href;
-
-            try {
-                const response = await fetch(sceneUrl);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch scene.js: ' + response.status);
-                }
-
-                let source = await response.text();
-                source = source
-                    .replace(/from '\.\/vendor\/three\/build\/three\.module\.js';/g, `from '${new URL('./vendor/three/build/three.module.js', baseUrl).href}';`)
-                    .replace(/from '\.\/vendor\/three\/examples\/jsm\/postprocessing\/EffectComposer\.js';/g, `from '${new URL('./vendor/three/examples/jsm/postprocessing/EffectComposer.js', baseUrl).href}';`)
-                    .replace(/from '\.\/vendor\/three\/examples\/jsm\/postprocessing\/RenderPass\.js';/g, `from '${new URL('./vendor/three/examples/jsm/postprocessing/RenderPass.js', baseUrl).href}';`)
-                    .replace(/from '\.\/vendor\/three\/examples\/jsm\/postprocessing\/UnrealBloomPass\.js';/g, `from '${new URL('./vendor/three/examples/jsm/postprocessing/UnrealBloomPass.js', baseUrl).href}';`)
-                    .replace(/from '\.\/vendor\/three\/examples\/jsm\/postprocessing\/ShaderPass\.js';/g, `from '${new URL('./vendor/three/examples/jsm/postprocessing/ShaderPass.js', baseUrl).href}';`);
-
-                const blob = new Blob([source], { type: 'text/javascript' });
-                const moduleUrl = URL.createObjectURL(blob);
-                await import(moduleUrl);
-            } catch (error) {
-                console.error('Scene loading failed:', error);
-                await showFileFallback('This project needs a local HTTP server to run modules properly on file:// pages.');
-            }
-        }
-
-        if (location.protocol === 'file:') {
-            loadSceneModule();
-        } else {
-            const sceneScript = document.createElement('script');
-            sceneScript.type = 'module';
-            sceneScript.src = 'scene.js';
-            document.body.appendChild(sceneScript);
-        }
-    </script>
+    <script type="module" src="scene.js"></script>
 </body>
 </html>
