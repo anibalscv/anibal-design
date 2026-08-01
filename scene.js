@@ -118,7 +118,10 @@ const fallbackOverlay = document.getElementById('webgl-fallback');
 
 function showWebGLFallback() {
     if (container) container.style.display = 'none';
-    if (fallbackOverlay) fallbackOverlay.classList.add('visible');
+    if (fallbackOverlay) {
+        fallbackOverlay.classList.remove('hidden');
+        fallbackOverlay.classList.add('visible');
+    }
     console.warn('WebGL is not available on this device.');
 }
 
@@ -131,7 +134,18 @@ const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerH
 camera.position.copy(state.cameraPosition);
 
 try {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('webgl2', { antialias: !isMobile, alpha: false })
+        || canvas.getContext('webgl', { antialias: !isMobile, alpha: false })
+        || canvas.getContext('experimental-webgl', { antialias: !isMobile, alpha: false });
+
+    if (!context) {
+        throw new Error('No WebGL context available');
+    }
+
     renderer = new THREE.WebGLRenderer({
+        canvas,
+        context,
         antialias: !isMobile,
         alpha: false,
         powerPreference: 'high-performance',
@@ -140,7 +154,14 @@ try {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
-    if (container) container.appendChild(renderer.domElement);
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+    renderer.domElement.style.touchAction = 'none';
+    renderer.domElement.style.position = 'absolute';
+    if (container) {
+        container.style.display = 'block';
+        container.appendChild(renderer.domElement);
+    }
 } catch (error) {
     renderer = null;
     showWebGLFallback();
@@ -1618,9 +1639,15 @@ function drawRadarChart() {
 function onResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    composer.setSize(window.innerWidth, window.innerHeight);
-    bloomPass.resolution.set(window.innerWidth, window.innerHeight);
+    if (renderer) {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    if (composer) {
+        composer.setSize(window.innerWidth, window.innerHeight);
+    }
+    if (bloomPass) {
+        bloomPass.resolution.set(window.innerWidth, window.innerHeight);
+    }
     applyDevicePerformanceSettings();
 }
 loadAudioPreference();
