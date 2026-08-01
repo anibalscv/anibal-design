@@ -425,22 +425,48 @@
     </div>
 
     <script>
-        if (location.protocol === 'file:') {
+        async function showFileFallback(message) {
             const fallback = document.getElementById('webgl-fallback');
-            if (fallback) {
-                const paragraphs = fallback.querySelectorAll('p');
-                const title = fallback.querySelector('h2');
-                if (title) title.textContent = 'Open via local server';
-                if (paragraphs.length >= 2) {
-                    paragraphs[0].textContent = 'Google Chrome blocks ES module loading from file://. Use a local HTTP server to run this project.';
-                    paragraphs[1].textContent = 'Run npm start or ./run-local.sh, then open http://localhost:8080 in Chrome.';
+            if (!fallback) return;
+            const title = fallback.querySelector('h2');
+            const paragraphs = fallback.querySelectorAll('p');
+            if (title) title.textContent = 'Open via local server';
+            if (paragraphs.length >= 2) {
+                paragraphs[0].textContent = message;
+                paragraphs[1].textContent = 'Run npm start or ./run-local.sh, then open http://localhost:8080 in Chrome.';
+            }
+            fallback.classList.remove('hidden');
+            fallback.classList.add('visible');
+        }
+
+        async function loadSceneModule() {
+            const baseUrl = new URL('.', location.href).href;
+            const sceneUrl = new URL('scene.js', baseUrl).href;
+
+            try {
+                const response = await fetch(sceneUrl);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch scene.js: ' + response.status);
                 }
-                fallback.classList.remove('hidden');
-                fallback.classList.add('visible');
+
+                let source = await response.text();
+                source = source
+                    .replace(/from '\.\/vendor\/three\/build\/three\.module\.js';/g, `from '${new URL('./vendor/three/build/three.module.js', baseUrl).href}';`)
+                    .replace(/from '\.\/vendor\/three\/examples\/jsm\/postprocessing\/EffectComposer\.js';/g, `from '${new URL('./vendor/three/examples/jsm/postprocessing/EffectComposer.js', baseUrl).href}';`)
+                    .replace(/from '\.\/vendor\/three\/examples\/jsm\/postprocessing\/RenderPass\.js';/g, `from '${new URL('./vendor/three/examples/jsm/postprocessing/RenderPass.js', baseUrl).href}';`)
+                    .replace(/from '\.\/vendor\/three\/examples\/jsm\/postprocessing\/UnrealBloomPass\.js';/g, `from '${new URL('./vendor/three/examples/jsm/postprocessing/UnrealBloomPass.js', baseUrl).href}';`)
+                    .replace(/from '\.\/vendor\/three\/examples\/jsm\/postprocessing\/ShaderPass\.js';/g, `from '${new URL('./vendor/three/examples/jsm/postprocessing/ShaderPass.js', baseUrl).href}';`);
+
+                const blob = new Blob([source], { type: 'text/javascript' });
+                const moduleUrl = URL.createObjectURL(blob);
+                await import(moduleUrl);
+            } catch (error) {
+                console.error('Scene loading failed:', error);
+                await showFileFallback('This project needs a local HTTP server to run modules properly on Chrome mobile.');
             }
         }
-    </script>
 
-    <script type="module" src="scene.js"></script>
+        loadSceneModule();
+    </script>
 </body>
 </html>
