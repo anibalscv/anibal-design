@@ -114,6 +114,38 @@ function saveAudioPreference() {
 // ============================================
 const container = document.getElementById('canvas-container');
 const crosshairEl = document.getElementById('crosshair');
+const fallbackOverlay = document.getElementById('webgl-fallback');
+
+function showWebGLFallback() {
+    if (container) container.style.display = 'none';
+    if (fallbackOverlay) fallbackOverlay.classList.add('visible');
+    console.warn('WebGL is not available on this device.');
+}
+
+let webglSupported = true;
+let renderer = null;
+
+try {
+    renderer = new THREE.WebGLRenderer({
+        antialias: !isMobile,
+        alpha: false,
+        powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1 : 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    if (container) container.appendChild(renderer.domElement);
+} catch (error) {
+    webglSupported = false;
+    showWebGLFallback();
+    console.error('Failed to initialize WebGL renderer:', error);
+}
+
+if (!webglSupported || !renderer) {
+    throw new Error('WebGL renderer initialization failed');
+}
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(COLORS.bg);
 scene.fog = new THREE.FogExp2(COLORS.bg, 0.018);
@@ -121,32 +153,6 @@ scene.fog = new THREE.FogExp2(COLORS.bg, 0.018);
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
 camera.position.copy(state.cameraPosition);
 
-const renderer = new THREE.WebGLRenderer({
-    antialias: !isMobile,
-    alpha: false,
-    powerPreference: 'high-performance',
-});
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2));
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
-container.appendChild(renderer.domElement);
-
-// ============================================
-// POST-PROCESSING
-// ============================================
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-
-const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    isMobile ? 0.6 : 0.8,   // strength
-    0.4,   // radius
-    0.85   // threshold
-);
-composer.addPass(bloomPass);
-
-// Chromatic Aberration Shader
 const ChromaticAberrationShader = {
     uniforms: {
         tDiffuse: { value: null },
@@ -182,17 +188,40 @@ const ChromaticAberrationShader = {
     `
 };
 
-const chromaPass = new ShaderPass(ChromaticAberrationShader);
-composer.addPass(chromaPass);
+const usePostProcessing = !isMobile;
+let composer = null;
+let bloomPass = null;
+let chromaPass = null;
+
+// ============================================
+// POST-PROCESSING
+// ============================================
+if (usePostProcessing) {
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+
+    bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        isMobile ? 0.35 : 0.8,
+        0.4,
+        0.85
+    );
+    composer.addPass(bloomPass);
+
+    chromaPass = new ShaderPass(ChromaticAberrationShader);
+    chromaPass.uniforms.uIntensity.value = isMobile ? 0.001 : 0.002;
+    composer.addPass(chromaPass);
+}
 
 function applyDevicePerformanceSettings() {
     isMobile = isMobileDevice();
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2));
-    renderer.antialias = !isMobile;
-    bloomPass.strength = isMobile ? 0.35 : 0.8;
-    bloomPass.enabled = !isMobile;
-    chromaPass.uniforms.uIntensity.value = isMobile ? 0.001 : 0.002;
-    chromaPass.enabled = !isMobile;
+    if (usePostProcessing && bloomPass && chromaPass) {
+        bloomPass.strength = isMobile ? 0.35 : 0.8;
+        bloomPass.enabled = !isMobile;
+        chromaPass.uniforms.uIntensity.value = isMobile ? 0.001 : 0.002;
+        chromaPass.enabled = !isMobile;
+    }
     if (renderer.domElement) {
         renderer.domElement.style.width = '100%';
         renderer.domElement.style.height = '100%';
@@ -1850,7 +1879,11 @@ function animate() {
     pointLight2.position.y = -3 + Math.sin(time * 0.2) * 2;
 
     // --- Render ---
-    composer.render();
+    if (usePostProcessing && composer) {
+        composer.render();
+    } else {
+        renderer.render(scene, camera);
+    }
 }
 
 // ============================================

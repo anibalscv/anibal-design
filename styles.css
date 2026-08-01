@@ -68,6 +68,90 @@ html, body {
     height: 100%;
 }
 
+#webgl-fallback {
+    position: fixed;
+    inset: 0;
+    z-index: 10005;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+    background: rgba(10, 15, 29, 0.95);
+    color: var(--text-primary);
+    text-align: center;
+}
+
+#webgl-fallback.visible {
+    display: flex;
+}
+
+#webgl-fallback.hidden {
+    display: none !important;
+}
+
+.fallback-panel {
+    max-width: 420px;
+    width: 100%;
+    padding: 24px 22px;
+    border-radius: 18px;
+    background: rgba(3, 9, 20, 0.95);
+    border: 1px solid rgba(0, 240, 255, 0.16);
+    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
+}
+
+.fallback-panel h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    margin-bottom: 16px;
+}
+
+.fallback-panel p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(238, 244, 255, 0.9);
+    margin-bottom: 12px;
+}
+
+#webgl-fallback {
+    position: fixed;
+    inset: 0;
+    z-index: 10005;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+    background: rgba(10, 15, 29, 0.95);
+    color: var(--text-primary);
+    text-align: center;
+}
+
+#webgl-fallback.visible {
+    display: flex;
+}
+
+.fallback-panel {
+    max-width: 420px;
+    width: 100%;
+    padding: 24px 22px;
+    border-radius: 18px;
+    background: rgba(3, 9, 20, 0.95);
+    border: 1px solid rgba(0, 240, 255, 0.16);
+    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
+}
+
+.fallback-panel h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    margin-bottom: 16px;
+}
+
+.fallback-panel p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(238, 244, 255, 0.9);
+    margin-bottom: 12px;
+}
+
 /* ============================================
    LOADING SCREEN
    ============================================ */
