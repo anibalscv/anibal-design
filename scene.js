@@ -3,11 +3,11 @@
    Three.js Interactive Constellation
    ============================================ */
 
-import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import * as THREE from './vendor/three/build/three.module.js';
+import { EffectComposer } from './vendor/three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from './vendor/three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from './vendor/three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from './vendor/three/examples/jsm/postprocessing/ShaderPass.js';
 
 // ============================================
 // CONSTANTS & CONFIG
@@ -511,7 +511,7 @@ function createCoreNode() {
     boostNodeGlow(group, COLORS.cyan, 1.25);
 
     // Label
-    const label = createLabel('CORE OVERVIEW', COLORS.cyan);
+    const label = createLabel('CORE', COLORS.cyan);
     label.position.y = 2;
     group.add(label);
 
@@ -870,18 +870,40 @@ function createInnovationNode() {
 function createLabel(text, color) {
     const canvas = document.createElement('canvas');
     const dpr = 2;
-    canvas.width = 256 * dpr;
-    canvas.height = 40 * dpr;
+    const width = 164;
+    const height = 58;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
-    ctx.font = '600 11px Orbitron, sans-serif';
+
+    const bgR = Math.floor((color >> 16) * 0.65);
+    const bgG = Math.floor(((color >> 8) & 255) * 0.65);
+    const bgB = Math.floor((color & 255) * 0.65);
+    ctx.fillStyle = `rgba(${bgR}, ${bgG}, ${bgB}, 0.82)`;
+    const radius = 14;
+    ctx.beginPath();
+    ctx.moveTo(radius, 0);
+    ctx.lineTo(width - radius, 0);
+    ctx.quadraticCurveTo(width, 0, width, radius);
+    ctx.lineTo(width, height - radius);
+    ctx.quadraticCurveTo(width, height, width - radius, height);
+    ctx.lineTo(radius, height);
+    ctx.quadraticCurveTo(0, height, 0, height - radius);
+    ctx.lineTo(0, radius);
+    ctx.quadraticCurveTo(0, 0, radius, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.font = '700 18px Orbitron, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const c = new THREE.Color(color);
-    ctx.fillStyle = `rgba(${c.r * 255 | 0}, ${c.g * 255 | 0}, ${c.b * 255 | 0}, 0.8)`;
-    ctx.shadowColor = `rgba(${c.r * 255 | 0}, ${c.g * 255 | 0}, ${c.b * 255 | 0}, 0.5)`;
-    ctx.shadowBlur = 10;
-    ctx.fillText(text, 128, 20);
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.22)';
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.82)';
+    ctx.fillText(text, width / 2, height / 2);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.minFilter = THREE.LinearFilter;
@@ -889,10 +911,11 @@ function createLabel(text, color) {
         map: texture,
         transparent: true,
         depthWrite: false,
-        blending: THREE.AdditiveBlending,
+        blending: THREE.NormalBlending,
+        toneMapped: false,
     });
     const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(2.5, 0.4, 1);
+    sprite.scale.set(1.23, 0.51, 1);
     return sprite;
 }
 
@@ -1202,7 +1225,7 @@ function returnToOrbit() {
 function updateNavDots(activeKey) {
     document.querySelectorAll('.nav-dot').forEach(dot => {
         const key = dot.dataset.node;
-        dot.classList.toggle('active', key === activeKey || (activeKey === null && key === 'core'));
+        dot.classList.toggle('active', key === activeKey);
     });
 }
 
@@ -1419,6 +1442,8 @@ document.querySelectorAll('.nav-dot').forEach(dot => {
     });
 });
 
+updateNavDots(state.activeNode);
+
 // Back buttons
 document.querySelectorAll('.btn-back').forEach(btn => {
     btn.addEventListener('click', returnToOrbit);
@@ -1538,19 +1563,6 @@ function drawRadarChart() {
         ctx.fillText(labels[i], x, y);
     }
 }
-
-// ============================================
-// HUD TIME
-// ============================================
-function updateHudTime() {
-    const el = document.getElementById('hud-time');
-    if (el) {
-        const now = new Date();
-        el.textContent = now.toLocaleTimeString('en-US', { hour12: false });
-    }
-}
-setInterval(updateHudTime, 1000);
-updateHudTime();
 
 // ============================================
 // RESIZE
