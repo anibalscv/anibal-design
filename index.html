@@ -7,6 +7,10 @@
     <meta name="description" content="Human by day, interstellar developer by night. Dodging asteroids and perfecting interfaces since day one.">
     <meta name="theme-color" content="#0A0F1D">
 
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="Welcome to my Anibal's design orbit!">
@@ -17,6 +21,9 @@
     <meta name="twitter:description" content="Human by day, interstellar developer by night. Dodging asteroids and perfecting interfaces since day one.">
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%230A0F1D' stroke='%2300F0FF' stroke-width='6'/><circle cx='50' cy='50' r='20' fill='%2300F0FF'/></svg>">
+    <!-- Font preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -45,7 +52,8 @@
             <span class="hud-text dim"></span>
         </div>
         <div class="hud-corner bottom-left">
-            <span class="hud-text dim">DRAG TO ORBIT • CLICK TO EXPLORE</span>
+            <span class="hud-text dim hud-desktop-hint">DRAG TO ORBIT • CLICK TO EXPLORE</span>
+            <span class="hud-text dim hud-touch-hint">SWIPE TO ORBIT • TAP TO EXPLORE</span>
         </div>
         <div id="audio-control" class="hud-button" role="button" tabindex="0">ENABLE AMBIENCE</div>
         <!-- Crosshair -->
@@ -61,6 +69,26 @@
         </div>
 
     </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav id="bottom-nav">
+        <button class="bottom-nav-btn" data-node="core">
+            <span class="bottom-nav-dot"></span>
+            <span class="bottom-nav-label">CORE</span>
+        </button>
+        <button class="bottom-nav-btn" data-node="intelica">
+            <span class="bottom-nav-dot"></span>
+            <span class="bottom-nav-label">INTELICA</span>
+        </button>
+        <button class="bottom-nav-btn" data-node="education">
+            <span class="bottom-nav-dot"></span>
+            <span class="bottom-nav-label">EDUCATION</span>
+        </button>
+        <button class="bottom-nav-btn" data-node="innovation">
+            <span class="bottom-nav-dot"></span>
+            <span class="bottom-nav-label">EXPERIENCE</span>
+        </button>
+    </nav>
 
     <!-- Navigation Dots -->
     <nav id="nav-dots">

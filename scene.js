@@ -24,11 +24,15 @@ const COLORS = {
 
 const isTouchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
 const isMobileDevice = () => {
-    return isTouchCapable || /Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent) || window.innerWidth <= 900;
+    return /Mobi|Android|iPhone|iPod/.test(navigator.userAgent) || window.innerWidth <= 600;
+};
+const isTabletDevice = () => {
+    return isTouchCapable && !isMobileDevice() && window.innerWidth <= 1024;
 };
 
 let isMobile = isMobileDevice();
-const defaultCameraDistance = isMobile ? 18 : 16;
+let isTablet = isTabletDevice();
+const defaultCameraDistance = isMobile ? 18 : isTablet ? 17 : 16;
 
 const NODE_CONFIG = {
     core: { position: new THREE.Vector3(0, 0, 0), color: COLORS.cyan, panelId: 'panel-core' },
@@ -138,7 +142,7 @@ try {
         antialias: !isMobile,
         alpha: false,
     });
-    renderer.setPixelRatio(Math.max(1, Math.min(window.devicePixelRatio || 1, isMobile ? 1 : 2)));
+    renderer.setPixelRatio(Math.max(1, Math.min(window.devicePixelRatio || 1, isMobile ? 1 : isTablet ? 1.5 : 2)));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
@@ -224,9 +228,10 @@ if (usePostProcessing) {
 
 function applyDevicePerformanceSettings() {
     isMobile = isMobileDevice();
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2));
+    isTablet = isTabletDevice();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : isTablet ? 1.5 : 2));
     if (usePostProcessing && bloomPass && chromaPass) {
-        bloomPass.strength = isMobile ? 0.35 : 0.8;
+        bloomPass.strength = isMobile ? 0.35 : isTablet ? 0.6 : 0.8;
         bloomPass.enabled = !isMobile;
         chromaPass.uniforms.uIntensity.value = isMobile ? 0.001 : 0.002;
         chromaPass.enabled = !isMobile;
@@ -260,7 +265,7 @@ scene.add(pointLight3);
 // BACKGROUND PARTICLES
 // ============================================
 function createParticleField() {
-    const count = isMobile ? 500 : 2000;
+    const count = isMobile ? 400 : isTablet ? 900 : 2000;
     const positions = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const colors = new Float32Array(count * 3);
@@ -1282,9 +1287,15 @@ function returnToOrbit() {
 }
 
 function updateNavDots(activeKey) {
+    // Side nav dots
     document.querySelectorAll('.nav-dot').forEach(dot => {
         const key = dot.dataset.node;
         dot.classList.toggle('active', key === activeKey);
+    });
+    // Bottom nav buttons
+    document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
+        const key = btn.dataset.node;
+        btn.classList.toggle('active', key === activeKey);
     });
 }
 
@@ -1492,11 +1503,23 @@ window.addEventListener('touchmove', onTouchMove, { passive: true });
 window.addEventListener('touchend', onTouchEnd);
 window.addEventListener('wheel', onMouseWheel, { passive: false });
 
-// Nav dots
+// Nav dots (side)
 document.querySelectorAll('.nav-dot').forEach(dot => {
     dot.addEventListener('click', () => {
         const key = dot.dataset.node;
         if (state.activeNode === key) return;
+        transitionToNode(key);
+    });
+});
+
+// Bottom nav (mobile)
+document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const key = btn.dataset.node;
+        if (state.activeNode === key) {
+            returnToOrbit();
+            return;
+        }
         transitionToNode(key);
     });
 });
@@ -1701,8 +1724,8 @@ function animate() {
     const gridMesh = grid.children[0];
     if (gridMesh) gridMesh.material.uniforms.uTime.value = time;
 
-    // --- Chromatic aberration ---
-    chromaPass.uniforms.uTime.value = time;
+    // --- Chromatic aberration (only when post-processing is active) ---
+    if (chromaPass) chromaPass.uniforms.uTime.value = time;
 
     // --- Node orbits ---
     const t1 = time * ORBIT_SPEEDS.intelica + state.orbitAngle;
@@ -1921,6 +1944,8 @@ const loadInterval = setInterval(() => {
             loadingScreen.classList.add('fade-out');
             hudOverlay.classList.add('visible');
             navDots.classList.add('visible');
+            const bottomNav = document.getElementById('bottom-nav');
+            if (bottomNav) bottomNav.classList.add('visible');
             playIntroCinematic();
         }, 400);
     }
@@ -1937,6 +1962,8 @@ setTimeout(() => {
         loadingScreen.classList.add('fade-out');
         hudOverlay.classList.add('visible');
         navDots.classList.add('visible');
+        const bottomNav = document.getElementById('bottom-nav');
+        if (bottomNav) bottomNav.classList.add('visible');
         playIntroCinematic();
     }
 }, 8000);
