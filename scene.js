@@ -77,6 +77,7 @@ const state = {
     nodeSpherical: { theta: 0, phi: Math.PI / 2.3 },
     nodeDistance: 4.5,
     damping: { theta: 0, phi: 0 },
+    webglAvailable: true,
 };
 
 const audioState = {
@@ -137,33 +138,48 @@ scene.fog = new THREE.FogExp2(COLORS.bg, 0.018);
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
 camera.position.copy(state.cameraPosition);
 
-try {
-    renderer = new THREE.WebGLRenderer({
-        antialias: !isMobile,
-        alpha: false,
-    });
-    renderer.setPixelRatio(Math.max(1, Math.min(window.devicePixelRatio || 1, isMobile ? 1 : isTablet ? 1.5 : 2)));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
-    renderer.domElement.style.width = '100%';
-    renderer.domElement.style.height = '100%';
-    renderer.domElement.style.touchAction = 'none';
-    renderer.domElement.style.position = 'absolute';
-    renderer.domElement.style.top = '0';
-    renderer.domElement.style.left = '0';
-    if (container) {
-        container.style.display = 'block';
-        container.appendChild(renderer.domElement);
+function tryCreateWebGLRenderer() {
+    const attempts = [
+        { antialias: !isMobile, alpha: false, powerPreference: 'high-performance' },
+        { antialias: false, alpha: false, powerPreference: 'default' },
+        { antialias: false, alpha: false, precision: 'mediump', powerPreference: 'low-power' },
+        { antialias: false, alpha: true, failIfMajorPerformanceCaveat: false }
+    ];
+
+    for (let opts of attempts) {
+        try {
+            const r = new THREE.WebGLRenderer(opts);
+            if (r && r.getContext()) {
+                r.setPixelRatio(Math.max(1, Math.min(window.devicePixelRatio || 1, isMobile ? 1 : isTablet ? 1.5 : 2)));
+                r.setSize(window.innerWidth, window.innerHeight);
+                r.toneMapping = THREE.ACESFilmicToneMapping;
+                r.toneMappingExposure = 1.2;
+                if (r.domElement) {
+                    r.domElement.style.width = '100%';
+                    r.domElement.style.height = '100%';
+                    r.domElement.style.touchAction = 'none';
+                    r.domElement.style.position = 'absolute';
+                    r.domElement.style.top = '0';
+                    r.domElement.style.left = '0';
+                }
+                return r;
+            }
+        } catch (e) {
+            console.warn('WebGL attempt with options failed:', opts, e);
+        }
     }
-} catch (error) {
-    renderer = null;
-    showWebGLFallback();
-    console.error('Failed to initialize WebGL renderer:', error);
+    return null;
 }
 
-if (!renderer) {
-    throw new Error('WebGL renderer initialization failed');
+renderer = tryCreateWebGLRenderer();
+if (renderer && container) {
+    container.style.display = 'block';
+    container.appendChild(renderer.domElement);
+    state.webglAvailable = true;
+} else {
+    state.webglAvailable = false;
+    document.body.classList.add('no-webgl');
+    console.warn('WebGL is not available on this browser/device. Seamless 2D portfolio mode activated.');
 }
 
 const ChromaticAberrationShader = {
@@ -201,7 +217,7 @@ const ChromaticAberrationShader = {
     `
 };
 
-const usePostProcessing = !isMobile;
+const usePostProcessing = state.webglAvailable && !isMobile;
 let composer = null;
 let bloomPass = null;
 let chromaPass = null;
@@ -1185,6 +1201,7 @@ function activateAmbientAudio() {
 }
 
 function transitionToNode(key) {
+    if (!key || !NODE_CONFIG[key]) return;
     if (state.isTransitioning) return;
     state.isTransitioning = true;
     state.activeNode = key;
@@ -1195,6 +1212,20 @@ function transitionToNode(key) {
         p.classList.add('hidden');
         p.classList.remove('visible');
     });
+
+    if (!state.webglAvailable) {
+        state.isTransitioning = false;
+        const panelId = NODE_CONFIG[key].panelId;
+        const panel = document.getElementById(panelId);
+        if (panel) {
+            panel.classList.remove('hidden');
+            panel.classList.add('visible');
+        }
+        if (key === 'intelica') animateMetrics();
+        if (key === 'core') drawRadarChart();
+        updateNavDots(key);
+        return;
+    }
 
     // Set camera targets
     const targetPos = getCameraPositionForNode(key);
@@ -1232,8 +1263,10 @@ function transitionToNode(key) {
             // Show panel
             const panelId = NODE_CONFIG[key].panelId;
             const panel = document.getElementById(panelId);
-            panel.classList.remove('hidden');
-            panel.classList.add('visible');
+            if (panel) {
+                panel.classList.remove('hidden');
+                panel.classList.add('visible');
+            }
 
             // Animate metrics if intelica
             if (key === 'intelica') animateMetrics();
@@ -1251,13 +1284,20 @@ function transitionToNode(key) {
 
 function returnToOrbit() {
     if (state.isTransitioning) return;
-    state.isTransitioning = true;
 
     // Hide panels
     document.querySelectorAll('.detail-panel').forEach(p => {
         p.classList.add('hidden');
         p.classList.remove('visible');
     });
+
+    if (!state.webglAvailable) {
+        state.activeNode = null;
+        updateNavDots(null);
+        return;
+    }
+
+    state.isTransitioning = true;
 
     const startPos = camera.position.clone();
     const startTarget = state.cameraTarget.clone();
@@ -1303,9 +1343,15 @@ function updateNavDots(activeKey) {
 // INTRO CINEMATIC
 // ============================================
 function playIntroCinematic() {
-    const duration = 4000;
+    if (!state.webglAvailable) {
+        state.introComplete = true;
+        state.autoOrbit = true;
+        updateNavDots(null);
+        return;
+    }
+    const duration = 1200; // 1.2s smooth camera sweep
     const startTime = performance.now();
-    const startPos = new THREE.Vector3(15, 8, 15);
+    const startPos = new THREE.Vector3(12, 6, 14);
     camera.position.copy(startPos);
 
     function animateIntro(now) {
@@ -1314,15 +1360,6 @@ function playIntroCinematic() {
         t = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
         camera.position.lerpVectors(startPos, state.defaultCamPos, t);
-
-        // Slight orbit during intro
-        const introOrbit = (1 - t) * Math.PI * 0.5;
-        const pos = camera.position.clone();
-        const rx = pos.x * Math.cos(introOrbit * 0.3) - pos.z * Math.sin(introOrbit * 0.3);
-        const rz = pos.x * Math.sin(introOrbit * 0.3) + pos.z * Math.cos(introOrbit * 0.3);
-        camera.position.x = rx;
-        camera.position.z = rz;
-
         camera.lookAt(state.cameraTarget);
 
         if (t < 1) {
@@ -1332,6 +1369,7 @@ function playIntroCinematic() {
             state.autoOrbit = true;
             camera.position.copy(state.defaultCamPos);
             state.spherical.theta = Math.atan2(state.defaultCamPos.x, state.defaultCamPos.z);
+            updateNavDots(null);
         }
     }
 
@@ -1713,6 +1751,7 @@ const _vecRingScale = new THREE.Vector3();
 function animate() {
     requestAnimationFrame(animate);
 
+    if (!state.webglAvailable || !renderer) return;
     const time = state.clock.getElapsedTime();
     const delta = state.clock.getDelta();
 
