@@ -140,7 +140,7 @@ camera.position.copy(state.cameraPosition);
 
 function tryCreateWebGLRenderer() {
     const attempts = [
-        { antialias: !isMobile, alpha: false, powerPreference: 'high-performance' },
+        { antialias: true, alpha: false, powerPreference: 'high-performance' },
         { antialias: false, alpha: false, powerPreference: 'default' },
         { antialias: false, alpha: false, precision: 'mediump', powerPreference: 'low-power' },
         { antialias: false, alpha: true, failIfMajorPerformanceCaveat: false }
@@ -217,7 +217,7 @@ const ChromaticAberrationShader = {
     `
 };
 
-const usePostProcessing = state.webglAvailable && !isMobile;
+const usePostProcessing = state.webglAvailable;
 let composer = null;
 let bloomPass = null;
 let chromaPass = null;
@@ -1445,6 +1445,15 @@ function onClick(e) {
 }
 
 function onTouchStart(e) {
+    if (e.touches.length === 2) {
+        // Pinch-to-zoom start
+        state._pinchActive = true;
+        state.isDragging = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        state._pinchStartDist = Math.sqrt(dx * dx + dy * dy);
+        return;
+    }
     if (e.touches.length === 1) {
         activateAmbientAudio();
         const touch = e.touches[0];
@@ -1475,6 +1484,22 @@ function onTouchMove(e) {
     // If touching inside a panel, let the browser handle scroll natively
     if (state._touchInsidePanel) return;
 
+    // Pinch-to-zoom
+    if (e.touches.length === 2 && state._pinchActive) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const delta = state._pinchStartDist - dist;
+        const zoomSpeed = 0.05;
+        if (state.activeNode) {
+            state.nodeDistance = Math.max(2.5, Math.min(12, state.nodeDistance + delta * zoomSpeed));
+        } else {
+            state.cameraDistance = Math.max(5, Math.min(40, state.cameraDistance + delta * zoomSpeed));
+        }
+        state._pinchStartDist = dist;
+        return;
+    }
+
     if (e.touches.length === 1 && state.isDragging) {
         const touch = e.touches[0];
         const deltaX = touch.clientX - state.dragStart.x;
@@ -1491,6 +1516,10 @@ function onTouchMove(e) {
 }
 
 function onTouchEnd(e) {
+    if (state._pinchActive) {
+        state._pinchActive = false;
+        return;
+    }
     const wasInsidePanel = state._touchInsidePanel;
     state._touchInsidePanel = false;
     state.isDragging = false;
