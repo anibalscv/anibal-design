@@ -150,7 +150,7 @@ function tryCreateWebGLRenderer() {
         try {
             const r = new THREE.WebGLRenderer(opts);
             if (r && r.getContext()) {
-                r.setPixelRatio(Math.max(1, Math.min(window.devicePixelRatio || 1, isMobile ? 1 : isTablet ? 1.5 : 2)));
+                r.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 2 : isTablet ? 2 : 2));
                 r.setSize(window.innerWidth, window.innerHeight);
                 r.toneMapping = THREE.ACESFilmicToneMapping;
                 r.toneMappingExposure = 1.2;
@@ -245,12 +245,12 @@ if (usePostProcessing) {
 function applyDevicePerformanceSettings() {
     isMobile = isMobileDevice();
     isTablet = isTabletDevice();
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : isTablet ? 1.5 : 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 2 : isTablet ? 2 : 2));
     if (usePostProcessing && bloomPass && chromaPass) {
-        bloomPass.strength = isMobile ? 0.35 : isTablet ? 0.6 : 0.8;
-        bloomPass.enabled = !isMobile;
+        bloomPass.strength = isMobile ? 0.4 : isTablet ? 0.6 : 0.8;
+        bloomPass.enabled = true;
         chromaPass.uniforms.uIntensity.value = isMobile ? 0.001 : 0.002;
-        chromaPass.enabled = !isMobile;
+        chromaPass.enabled = true;
     }
     if (renderer.domElement) {
         renderer.domElement.style.width = '100%';
