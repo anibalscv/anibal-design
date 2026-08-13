@@ -1445,6 +1445,11 @@ function onClick(e) {
 }
 
 function onTouchStart(e) {
+    // Ignore touches on UI controls (bottom nav, buttons, etc.)
+    const target = e.target;
+    if (target && (target.closest('#bottom-nav') || target.closest('.btn-back') || target.closest('#audio-control'))) {
+        return;
+    }
     if (e.touches.length === 2) {
         // Pinch-to-zoom start
         state._pinchActive = true;
@@ -1581,13 +1586,20 @@ document.querySelectorAll('.nav-dot').forEach(dot => {
 
 // Bottom nav (mobile)
 document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    const handleNav = (e) => {
+        e.stopPropagation();
         const key = btn.dataset.node;
         if (state.activeNode === key) {
             returnToOrbit();
             return;
         }
         transitionToNode(key);
+    };
+    btn.addEventListener('click', handleNav);
+    btn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleNav(e);
     });
 });
 
