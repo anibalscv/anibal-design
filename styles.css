@@ -1659,5 +1659,193 @@ body.no-webgl #canvas-container::before {
     }
 }
 
+/* ── 5. Mobile Landscape / Low-Height Viewports (max-height: 550px) ── */
+@media (max-height: 550px) {
+    /* Switch HUD hints */
+    .hud-desktop-hint { display: none !important; }
+    .hud-touch-hint { display: inline-block !important; }
+
+    /* Ensure bottom-nav is displayed in landscape touch mode */
+    #bottom-nav {
+        display: flex !important;
+        padding: 4px 8px;
+        padding-bottom: calc(4px + env(safe-area-inset-bottom));
+        background: rgba(8, 13, 26, 0.96);
+    }
+
+    .bottom-nav-btn {
+        min-height: 40px;
+        padding: 3px 2px;
+        gap: 2px;
+    }
+
+    .bottom-nav-dot {
+        width: 7px;
+        height: 7px;
+        border-width: 1px;
+    }
+
+    .bottom-nav-label {
+        font-size: 7px;
+        letter-spacing: 0.5px;
+    }
+
+    #nav-dots {
+        display: none !important;
+    }
+
+    #crosshair {
+        display: none !important;
+    }
+
+    /* HUD Adjustments */
+    .hud-corner.top-left,
+    .hud-corner.top-right,
+    .hud-corner.bottom-right {
+        display: none !important;
+    }
+
+    .hud-corner.bottom-left {
+        left: 12px;
+        bottom: calc(48px + env(safe-area-inset-bottom));
+        font-size: 8px;
+    }
+
+    #audio-control {
+        left: 12px;
+        right: auto;
+        bottom: calc(48px + env(safe-area-inset-bottom) + 24px);
+        font-size: 8px;
+        padding: 4px 8px;
+    }
+
+    /* Detail Panels in Landscape Mode: Do not stretch 100% full width, set comfortable max-width and margins */
+    .detail-panel {
+        width: min(520px, 85vw);
+        max-width: 520px;
+        top: 0;
+        bottom: calc(46px + env(safe-area-inset-bottom));
+        height: auto;
+        padding: calc(36px + env(safe-area-inset-top)) 0 0 0;
+    }
+
+    .panel-chrome {
+        margin: 0 10px;
+        border-radius: 8px;
+        height: 100%;
+    }
+
+    .panel-header {
+        padding: 8px 14px;
+    }
+
+    .panel-status-bar {
+        font-size: 8px;
+    }
+
+    .btn-back {
+        padding: 4px 10px;
+        font-size: 8px;
+    }
+
+    .panel-body {
+        padding: 12px 14px 16px;
+        touch-action: pan-y;
+    }
+
+    .panel-title {
+        font-size: 17px;
+        line-height: 1.2;
+        margin-bottom: 2px;
+    }
+
+    .panel-subtitle {
+        font-size: 11px;
+        margin-bottom: 6px;
+    }
+
+    .panel-divider {
+        margin: 8px 0 12px 0;
+    }
+
+    .panel-desc {
+        font-size: 11px;
+        line-height: 1.45;
+        margin-bottom: 12px;
+    }
+
+    .section-title {
+        font-size: 13px;
+        margin-bottom: 10px;
+    }
+
+    .pillar-grid {
+        gap: 8px;
+    }
+
+    .pillar-card {
+        padding: 10px;
+    }
+
+    .pillar-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .pillar-title {
+        font-size: 12px;
+    }
+
+    .pillar-desc {
+        font-size: 10px;
+        line-height: 1.35;
+    }
+
+    .metrics-grid {
+        gap: 6px;
+    }
+
+    .metric-card {
+        padding: 8px 6px;
+    }
+
+    .metric-value {
+        font-size: 16px;
+    }
+
+    .metric-label {
+        font-size: 7px;
+    }
+
+    .module-item {
+        padding: 8px 10px;
+        gap: 6px;
+    }
+
+    .module-title {
+        font-size: 11px;
+    }
+
+    .module-desc {
+        font-size: 10px;
+    }
+
+    .skill-tag {
+        font-size: 9px;
+        padding: 3px 8px;
+    }
+
+    /* Loading Screen in Landscape */
+    .loading-panel {
+        padding: 16px 20px;
+        gap: 10px;
+        max-height: 90vh;
+    }
+
+    .loading-title {
+        font-size: clamp(20px, 6vh, 28px);
+    }
+}
+
 
 

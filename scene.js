@@ -24,7 +24,7 @@ const COLORS = {
 
 const isTouchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
 const isMobileDevice = () => {
-    return /Mobi|Android|iPhone|iPod/.test(navigator.userAgent) || window.innerWidth <= 600;
+    return /Mobi|Android|iPhone|iPod/.test(navigator.userAgent) || window.innerWidth <= 600 || (window.innerWidth <= 950 && window.innerHeight <= 500);
 };
 const isTabletDevice = () => {
     return isTouchCapable && !isMobileDevice() && window.innerWidth <= 1024;
@@ -1018,8 +1018,9 @@ scene.add(nodes.innovation);
 function getCameraPositionForNode(key) {
     const node = nodes[key];
     const pos = node.position.clone();
-    // Position camera in front of and slightly above the node, facing toward it
-    const offset = new THREE.Vector3(2.5, 1.0, 3.5);
+    // Position camera at a comfortable overview distance from node (spacious distance ~7.5 - 9.0 units)
+    const dFactor = isMobile ? 1.8 : isTablet ? 1.6 : 1.45;
+    const offset = new THREE.Vector3(2.8 * dFactor, 1.2 * dFactor, 4.2 * dFactor);
     return pos.clone().add(offset);
 }
 
@@ -1255,7 +1256,7 @@ function transitionToNode(key) {
             // Calculate spherical angles relative to selected node for centered 3D orbit
             const nodePos = nodes[key].position;
             const offset = camera.position.clone().sub(nodePos);
-            const radius = Math.max(2, offset.length());
+            const radius = Math.max(4.0, offset.length());
             state.nodeDistance = radius;
             state.nodeSpherical.phi = Math.max(0.15, Math.min(Math.PI - 0.15, Math.acos(Math.max(-1, Math.min(1, offset.y / radius)))));
             state.nodeSpherical.theta = Math.atan2(offset.x, offset.z);
@@ -1497,7 +1498,7 @@ function onTouchMove(e) {
         const delta = state._pinchStartDist - dist;
         const zoomSpeed = 0.05;
         if (state.activeNode) {
-            state.nodeDistance = Math.max(2.5, Math.min(12, state.nodeDistance + delta * zoomSpeed));
+            state.nodeDistance = Math.max(4.0, Math.min(14, state.nodeDistance + delta * zoomSpeed));
         } else {
             state.cameraDistance = Math.max(5, Math.min(40, state.cameraDistance + delta * zoomSpeed));
         }
@@ -1560,7 +1561,7 @@ function onMouseWheel(e) {
     const zoomSpeed = 0.5;
     const zoomDelta = e.deltaY > 0 ? 1 : -1;
     if (state.activeNode) {
-        state.nodeDistance = Math.max(2.5, Math.min(12, state.nodeDistance + zoomDelta * zoomSpeed));
+        state.nodeDistance = Math.max(4.0, Math.min(14, state.nodeDistance + zoomDelta * zoomSpeed));
     } else {
         state.cameraDistance = Math.max(5, Math.min(40, state.cameraDistance + zoomDelta * zoomSpeed));
     }
@@ -1778,6 +1779,9 @@ window.addEventListener('touchend', autoStartAudioOnInteraction, { passive: true
 window.addEventListener('keydown', autoStartAudioOnInteraction, { passive: true });
 
 window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', () => {
+    setTimeout(onResize, 150);
+});
 
 // ============================================
 // ANIMATION LOOP
