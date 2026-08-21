@@ -592,7 +592,7 @@ function createCoreNode() {
 
     // Label
     const label = createLabel('CORE', COLORS.cyan);
-    label.position.y = 2;
+    label.position.y = 2.1;
     group.add(label);
 
     // Hitbox
@@ -793,7 +793,7 @@ function createIntelicaNode() {
     boostNodeGlow(group, 0xA84820, 0.85);
 
     const label = createLabel('INTELICA', 0xD06028);
-    label.position.y = 1.85;
+    label.position.y = 1.95;
     group.add(label);
 
     // ── Hitbox ──
@@ -864,7 +864,7 @@ function createEducationNode() {
 
     // Label
     const label = createLabel('EDUCATION', COLORS.purple);
-    label.position.y = 1.5;
+    label.position.y = 1.6;
     group.add(label);
 
     // Hitbox
@@ -931,7 +931,7 @@ function createInnovationNode() {
 
     // Label
     const label = createLabel('EXPERIENCE', COLORS.gold);
-    label.position.y = 1.5;
+    label.position.y = 1.6;
     group.add(label);
 
     // Hitbox
@@ -949,13 +949,21 @@ function createInnovationNode() {
 // --- Label helper ---
 function createLabel(text, color) {
     const canvas = document.createElement('canvas');
-    const dpr = 2;
-    const width = 164;
-    const height = 58;
+    // Use device pixel ratio (capped at 3) for crisp text on all screens
+    const dpr = Math.min(window.devicePixelRatio || 2, 3);
+    // Power-of-two canvas dimensions to prevent WebGL texture distortion on Android GPUs
+    const width = 256;
+    const height = 64;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
+
+    // Rounded-rect background pill — centred within the POT canvas
+    const pillW = 180;
+    const pillH = 48;
+    const offsetX = (width - pillW) / 2;
+    const offsetY = (height - pillH) / 2;
 
     const bgR = Math.floor((color >> 16) * 0.65);
     const bgG = Math.floor(((color >> 8) & 255) * 0.65);
@@ -963,15 +971,15 @@ function createLabel(text, color) {
     ctx.fillStyle = `rgba(${bgR}, ${bgG}, ${bgB}, 0.82)`;
     const radius = 14;
     ctx.beginPath();
-    ctx.moveTo(radius, 0);
-    ctx.lineTo(width - radius, 0);
-    ctx.quadraticCurveTo(width, 0, width, radius);
-    ctx.lineTo(width, height - radius);
-    ctx.quadraticCurveTo(width, height, width - radius, height);
-    ctx.lineTo(radius, height);
-    ctx.quadraticCurveTo(0, height, 0, height - radius);
-    ctx.lineTo(0, radius);
-    ctx.quadraticCurveTo(0, 0, radius, 0);
+    ctx.moveTo(offsetX + radius, offsetY);
+    ctx.lineTo(offsetX + pillW - radius, offsetY);
+    ctx.quadraticCurveTo(offsetX + pillW, offsetY, offsetX + pillW, offsetY + radius);
+    ctx.lineTo(offsetX + pillW, offsetY + pillH - radius);
+    ctx.quadraticCurveTo(offsetX + pillW, offsetY + pillH, offsetX + pillW - radius, offsetY + pillH);
+    ctx.lineTo(offsetX + radius, offsetY + pillH);
+    ctx.quadraticCurveTo(offsetX, offsetY + pillH, offsetX, offsetY + pillH - radius);
+    ctx.lineTo(offsetX, offsetY + radius);
+    ctx.quadraticCurveTo(offsetX, offsetY, offsetX + radius, offsetY);
     ctx.closePath();
     ctx.fill();
 
@@ -987,6 +995,9 @@ function createLabel(text, color) {
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.minFilter = THREE.LinearFilter;
+    texture.generateMipmaps = false;          // prevent mipmap artefacts on Android
+    texture.premultiplyAlpha = false;         // consistent alpha compositing cross-device
+    texture.needsUpdate = true;
     const spriteMat = new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
@@ -995,7 +1006,9 @@ function createLabel(text, color) {
         toneMapped: false,
     });
     const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(1.23, 0.51, 1);
+    // Sprite aspect ratio matches canvas: 256/64 = 4:1 → scale proportionally
+    const spriteW = 1.6;
+    sprite.scale.set(spriteW, spriteW * (height / width), 1);
     return sprite;
 }
 
